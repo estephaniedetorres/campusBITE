@@ -64,21 +64,44 @@ npm run build --workspace=web-client
 # Now server-core also serves the SPA at http://localhost:3000/
 ```
 
-## Running on Android Phone (no APK build needed — Termux)
+## Running on Android Phone as Server (REQUIRED — phone is the server via Hotspot, Termux)
 
-1. Install **Termux** from F-Droid (not Play Store).
-2. In Termux:
+> **Requirement: Phone as Server** — the Android phone runs Node + SQLite and serves all clients via its Wi-Fi Hotspot at `http://192.168.43.1:3000`. No internet, no PC server.
+
+**One-tap script (handles stuck `pkg upgrade`, Node version, better-sqlite3 fallback):**
+```bash
+# In Termux (install Termux ONLY from F-Droid, not Play Store):
+git clone https://github.com/estephaniedetorres/campusBITE.git
+cd campusBITE
+bash scripts/phone-server.sh
+# Script does: pkg update → install nodejs → check Node >=22.5 → npm install → build → seed → node dist/server.js
+# KEEP TERMUX OPEN + Hotspot ON — server dies if Termux is swiped away
+```
+
+**Manual steps if script hangs:**
+1. **Stuck at 3% on `pkg upgrade`?** Press `Ctrl+C`, then skip upgrade:
    ```bash
-   pkg update && pkg install nodejs git
-   git clone <your-repo>   # or copy folder via USB
-   cd CampusBITE
+   pkg update -y
+   pkg install nodejs -y   # NOT pkg upgrade -y
+   # if still stuck: termux-change-repo → pick another mirror → pkg update -y
+   ```
+2. **Check Node:**
+   ```bash
+   node -v  # need v22.5+ for built-in node:sqlite
+   # If v20.x → fallback compile:
+   pkg install python clang make -y
+   npm install better-sqlite3
+   ```
+3. **Build & run:**
+   ```bash
    npm install
    npm run build --workspace=web-client
    npm run build --workspace=server-core
    node packages/server-core/dist/server.js
+   # must show: Network: http://192.168.43.1:3000  Health: http://localhost:3000/api/health
    ```
-3. Turn on phone **Hotspot**.
-4. On other phones/laptops: connect to that hotspot → browser → `http://192.168.43.1:3000`.
+4. **Turn on phone Hotspot** (Settings → Portable Hotspot) **before** starting server or right after — keep it ON.
+5. **Clients:** Other phones/laptops → WiFi → join **phone's hotspot** → browser → `http://192.168.43.1:3000` → Kiosk is **only public** page (`/kiosk?stall=stall-001` via QR). Staff pages `/pos`, `/kds`, `/admin` require login (`admin/admin123`, `grill/grill123`, `brew/brew123`) — server enforces `403` if stall owner tries other stall.
 
 ## Running as APK (later, needs Android Studio + JDK 17)
 
