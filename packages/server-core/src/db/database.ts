@@ -16,22 +16,35 @@ if (!fs.existsSync(DATA_DIR)) {
 
 console.log(`[DB] Using database at: ${DB_PATH}`);
 
-// Try better-sqlite3 first (native, fast) — works on Android/arm64 where prebuild exists.
-// Fallback to Node's built-in node:sqlite (no native compile needed, works on Windows dev).
+// Try better-sqlite3 first (native, fast) — works on Android/arm64 where prebuild exists if installed.
+// Fallback to Node's built-in node:sqlite (Node >=22.5, no compile, works on Windows dev).
+// For Termux Node <22.5 (e.g. 20), node:sqlite is missing → instruct to install Node 22 or better-sqlite3.
 let rawDb: any;
 let usingBetterSqlite3 = false;
+let nodeVer = process.versions.node;
 
 try {
   const BetterSqlite3 = require('better-sqlite3');
   rawDb = new BetterSqlite3(DB_PATH);
   usingBetterSqlite3 = true;
-  console.log('[DB] Using better-sqlite3');
+  console.log('[DB] Using better-sqlite3 (Node ' + nodeVer + ')');
 } catch (e: any) {
-  console.log('[DB] better-sqlite3 not available, falling back to node:sqlite (built-in). Reason:', e.message?.slice(0, 120));
-  // @ts-ignore - node:sqlite is experimental, require via createRequire
-  const { DatabaseSync } = require('node:sqlite');
-  rawDb = new DatabaseSync(DB_PATH);
-  console.log('[DB] Using node:sqlite (DatabaseSync)');
+  console.log('[DB] better-sqlite3 not available, trying node:sqlite. Reason:', e.message?.slice(0, 120));
+  try {
+    // @ts-ignore - node:sqlite is experimental in Node 22.5+
+    const { DatabaseSync } = require('node:sqlite');
+    rawDb = new DatabaseSync(DB_PATH);
+    console.log('[DB] Using node:sqlite (DatabaseSync) Node ' + nodeVer);
+  } catch (e2: any) {
+    console.error('[DB] FATAL: No SQLite engine available.');
+    console.error('[DB] Your Node:', nodeVer, '- node:sqlite needs Node >=22.5');
+    console.error('[DB] Fix for Termux phone server:');
+    console.error('[DB]  1) pkg update && pkg install nodejs    # try to get Node 22');
+    console.error('[DB]  2) node -v  # must be >=22.5, if still 20.x do:');
+    console.error('[DB]     pkg install python clang make && npm install better-sqlite3');
+    console.error('[DB]  3) node packages/server-core/dist/server.js');
+    throw new Error(`No SQLite engine: Node ${nodeVer} has no node:sqlite and better-sqlite3 not installed. ${e2.message}`);
+  }
 }
 
 // Shim to make node:sqlite behave like better-sqlite3 for our codebase
