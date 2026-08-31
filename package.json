@@ -1,0 +1,24 @@
+{
+  "name": "campusbite",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CampusBITE - Offline-first canteen ordering system (phone as server)",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:server": "npm run dev --workspace=server-core",
+    "dev:client": "npm run dev --workspace=web-client",
+    "build": "npm run build --workspaces --if-present",
+    "build:server": "npm run build --workspace=server-core",
+    "build:client": "npm run build --workspace=web-client",
+    "start": "npm run start --workspace=server-core"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "allowScripts": {
+    "better-sqlite3": true,
+    "esbuild": true
+  }
+}
