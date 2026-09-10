@@ -103,6 +103,25 @@ bash scripts/phone-server.sh
 4. **Turn on phone Hotspot** (Settings → Portable Hotspot) **before** starting server or right after — keep it ON.
 5. **Clients:** Other phones/laptops → WiFi → join **phone's hotspot** → browser → `http://192.168.43.1:3000` → Kiosk is **only public** page (`/kiosk?stall=stall-001` via QR). Staff pages `/pos`, `/kds`, `/admin` require login (`admin/admin123`, `grill/grill123`, `brew/brew123`) — server enforces `403` if stall owner tries other stall.
 
+## Running with Expo Go (Phone UI via Expo, server still on phone via Termux)
+
+> Expo Go shows the **CampusBITE App UI** (Server status + QR + quick open) on your phone without building APK. The Node server **still runs in Termux on same phone** at `http://192.168.43.1:3000` — Expo Go is UI only.
+
+```bash
+# 1. On PC (same repo):
+npm install --workspace=mobile-server
+npx --workspace=mobile-server expo start
+# → shows QR code in terminal: exp://192.168.1.104:8081
+
+# 2. On Android phone: Install Expo Go from Play Store → Open → Scan QR → CampusBITE App opens
+
+# 3. In Expo app: Set Server URL to http://192.168.43.1:3000 (hotspot) or http://192.168.1.104:3000 (dev PC)
+#    Tap Refresh Health → shows Online, stalls, QR for http://<hotspot-ip>:3000/kiosk?stall=stall-001
+#    Tap Kiosk/POS/KDS/Admin tiles → opens system browser to that URL (Kiosk is only public)
+```
+
+*For embedded Node APK (Foreground Service + WakeLock):* `npx expo prebuild` + `nodejs-mobile-react-native` requires **Dev Build** `npx expo run:android` (needs Android Studio + JDK 17), not Expo Go. See `packages/mobile-server/README.md`.
+
 ## Running as APK (later, needs Android Studio + JDK 17)
 
 See `packages/mobile-server/README.md` for Foreground Service setup and `./gradlew assembleRelease`.

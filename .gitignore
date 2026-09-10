@@ -1,7 +1,11 @@
 node_modules
 dist
+.expo
+.expo-shared
+expo-env.d.ts
 data/*.db
 data/*.db-*
 .env
 packages/server-core/data
 packages/web-client/dist
+packages/mobile-server/.expo
