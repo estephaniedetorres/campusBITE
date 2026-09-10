@@ -8,6 +8,7 @@ import { getApiBase, setApiBase, apiGet, setToken } from '../constants/api';
 // To keep deps minimal, we use qrcode to generate data URL and show via Text, but for real QR we use react-native-svg if available.
 // Here we use a simple approach: show URL and use external QR image if online, else show URL for manual entry.
 import * as QRCode from 'qrcode';
+import { startNodeServer, isEmbedded } from '../src/bridge/nodeBridge';
 
 export default function Home() {
   const [apiBase, setApiBaseState] = useState(getApiBase());
@@ -39,6 +40,15 @@ export default function Home() {
 
   useEffect(() => { load(); }, [apiBase]);
   useEffect(() => { setApiBase(apiBase); }, [apiBase]);
+  useEffect(() => {
+    // Phone-as-server without Termux: Dev Build embeds Node at 127.0.0.1:3000
+    if (isEmbedded()) {
+      setApiBase('http://127.0.0.1:3000');
+      setApiBaseState('http://127.0.0.1:3000');
+      setInputUrl('http://127.0.0.1:3000');
+      startNodeServer();
+    }
+  }, []);
 
   function applyUrl() {
     const cleaned = inputUrl.replace(/\/$/, '');
@@ -57,7 +67,7 @@ export default function Home() {
         <View style={styles.hero}>
           <Text style={styles.heroTitle}>CampusBITE</Text>
           <Text style={styles.heroSub}>Phone as Server • Offline-first • Hotspot:Port 3000</Text>
-          <Text style={styles.heroNote}>Expo Go is UI only. Node server still runs via Termux on same phone (or PC). See instructions below.</Text>
+          <Text style={styles.heroNote}>{isEmbedded() ? 'Dev Build: Node embedded at 127.0.0.1:3000 + Hotspot 192.168.43.1:3000 (no Termux)' : 'Expo Go is UI only. Node server runs via Termux on same phone (or Dev Build). See below.'}</Text>
         </View>
 
         <View style={styles.card}>
@@ -68,6 +78,7 @@ export default function Home() {
             <TouchableOpacity onPress={applyUrl} style={styles.btnDark}><Text style={styles.btnDarkText}>Save</Text></TouchableOpacity>
           </View>
           <View style={styles.row}>
+            <TouchableOpacity onPress={() => { setInputUrl('http://127.0.0.1:3000'); setApiBase('http://127.0.0.1:3000'); setApiBaseState('http://127.0.0.1:3000'); }} style={styles.chip}><Text style={styles.chipText}>Embedded</Text></TouchableOpacity>
             <TouchableOpacity onPress={() => { setInputUrl('http://192.168.43.1:3000'); setApiBase('http://192.168.43.1:3000'); setApiBaseState('http://192.168.43.1:3000'); }} style={styles.chip}><Text style={styles.chipText}>Hotspot</Text></TouchableOpacity>
             <TouchableOpacity onPress={() => { setInputUrl('http://192.168.1.104:3000'); setApiBase('http://192.168.1.104:3000'); setApiBaseState('http://192.168.1.104:3000'); }} style={styles.chip}><Text style={styles.chipText}>Dev PC</Text></TouchableOpacity>
             <TouchableOpacity onPress={load} style={styles.chip}><Text style={styles.chipText}>Refresh Health</Text></TouchableOpacity>
@@ -123,12 +134,14 @@ export default function Home() {
         </View>
 
         <View style={styles.cardDark}>
-          <Text style={styles.cardTitleDark}>Phone as Server — Termux steps (REQUIRED)</Text>
-          <Text style={styles.monoDark}>1. F-Droid → install Termux (not Play Store)</Text>
-          <Text style={styles.monoDark}>2. git clone https://github.com/estephaniedetorres/campusBITE.git</Text>
-          <Text style={styles.monoDark}>3. bash scripts/phone-server.sh  # handles Node 22 check</Text>
-          <Text style={styles.monoDark}>4. Keep Termux open + Hotspot ON</Text>
-          <Text style={styles.smallDark}>Expo Go shows UI only. Node server runs in Termux on same phone. For final APK: npx expo run:android (needs Android Studio + nodejs-mobile).</Text>
+          <Text style={styles.cardTitleDark}>Phone as Server — without Termux (Dev Build) vs with Termux</Text>
+          <Text style={styles.monoDark}>Expo Go + Termux (now): bash scripts/phone-server.sh → 192.168.43.1:3000</Text>
+          <Text style={styles.monoDark}>Dev Build (no Termux, DB inside APK):</Text>
+          <Text style={styles.monoDark}>  1. npx expo prebuild</Text>
+          <Text style={styles.monoDark}>  2. node scripts/bundle-mobile-node.js</Text>
+          <Text style={styles.monoDark}>  3. npx expo run:android  # needs Android Studio + JDK 17</Text>
+          <Text style={styles.monoDark}>  → App starts Node at 127.0.0.1:3000 + Hotspot 192.168.43.1:3000, no Termux, DB has database</Text>
+          <Text style={styles.smallDark}>Expo Go cannot embed Node — needs Dev Build. Termux is easiest for now.</Text>
         </View>
 
         <Text style={styles.footer}>CampusBITE • Expo Go • Kiosk only public • Hybrid ADMIN/STALL_OWNER</Text>

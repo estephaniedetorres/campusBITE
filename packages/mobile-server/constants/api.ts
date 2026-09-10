@@ -1,10 +1,11 @@
-// CampusBITE API helper for Expo Go
-// Expo Go runs on phone's LAN, server is either:
-// - Termux phone server at http://192.168.43.1:3000 (hotspot)
-// - PC server at http://192.168.1.104:3000 (dev, joins hotspot)
-// We let user edit IP in UI and persist via AsyncStorage-like memory (here simple global).
+// CampusBITE API helper for Expo (Go + Dev Build embedded Node)
+// - Dev Build with embedded Node: RN UI on same phone fetches http://127.0.0.1:3000 (loopback), hotspot clients use http://192.168.43.1:3000
+// - Expo Go + Termux: RN UI fetches http://192.168.43.1:3000
+// - Expo Go + PC dev: http://192.168.1.104:3000
+// User can edit IP in UI.
 
 export const DEFAULT_HOTSPOT_URL = 'http://192.168.43.1:3000';
+export const DEFAULT_EMBEDDED_URL = 'http://127.0.0.1:3000';
 export const DEFAULT_DEV_URL = 'http://192.168.1.104:3000';
 
 let _apiBase = DEFAULT_HOTSPOT_URL;

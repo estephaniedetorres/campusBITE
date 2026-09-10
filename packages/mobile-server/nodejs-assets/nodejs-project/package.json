@@ -1,0 +1,17 @@
+{
+  "name": "campusbite-node",
+  "version": "1.0.0",
+  "private": true,
+  "main": "main.js",
+  "dependencies": {
+    "express": "^4.21.1",
+    "cors": "^2.8.5",
+    "ws": "^8.18.0",
+    "uuid": "^11.0.3",
+    "zod": "^3.23.8",
+    "dotenv": "^16.4.7"
+  },
+  "optionalDependencies": {
+    "better-sqlite3": "^9.2.2"
+  }
+}
