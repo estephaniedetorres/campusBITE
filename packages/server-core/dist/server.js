@@ -105,9 +105,15 @@ app.use('/api', (req, res) => res.status(404).json({ error: `API route ${req.met
 httpServer.listen(PORT, HOST, () => {
     const ips = getIps();
     const ip = ips[0] || '192.168.43.1';
-    console.log(`CampusBITE running at http://${ip}:${PORT}`);
-    console.log(`Kiosk: http://${ip}:${PORT}/kiosk`);
-    console.log(`Health: http://${ip}:${PORT}/api/health`);
+    console.log(`
+╔════════════════════════════════════════════════════╗
+║  CampusBITE Server running                        ║
+║  Local:   http://localhost:${PORT}                  ║
+║  Network: http://${ip}:${PORT} `.padEnd(53) + '║' + `
+║  Kiosk:   http://${ip}:${PORT}/kiosk               ║
+║  Health:  http://${ip}:${PORT}/api/health          ║
+╚════════════════════════════════════════════════════╝
+  `);
     if (!staticDir)
         console.log('Tip: Run npm run build --workspace=web-client to enable SPA');
 });
