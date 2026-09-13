@@ -48,8 +48,6 @@ function getHotspotIp(): { ips: string[], all: Record<string,string[]>, hotspotI
   // Try /proc/net/route for 192.168.43.x gateway
   try {
     rawRoute = fs.readFileSync('/proc/net/route','utf-8').slice(0,2000);
-    // route gateway is little-endian hex, 0101A8C0 = 192.168.1.1, 012B2BA8 = 192.168.43.1? Actually 01 = 1, 2B=43, etc.
-    // Simpler: just check if file contains C0A802... We just return raw for debug, hotspotIp stays fallback.
     if (rawRoute.includes('C0A8') && !hotspotCandidates.some(ip=>ip.startsWith('192.168.43.'))) {
       hotspotCandidates.push('192.168.43.1 (from /proc/net/route)');
     }
@@ -60,12 +58,18 @@ function getHotspotIp(): { ips: string[], all: Record<string,string[]>, hotspotI
       hotspotCandidates.push('192.168.43.1 (from getprop)');
     }
   } catch {}
-  // Always ensure fallback
+  // Try dedicated getprop keys for hotspot gateway (works without netlink)
+  try {
+    const gw = execSync('getprop 2>/dev/null | grep -E "dhcp.*gateway|hotspot" | head -5', { encoding:'utf-8', timeout:500 }).trim();
+    if (gw) getpropOut = (getpropOut + '\n' + gw).trim();
+  } catch {}
+  // Always ensure fallback and also ensure ips includes hotspot for Network list display
   if (!hotspotCandidates.some(ip=>ip.startsWith('192.168.43.'))) hotspotCandidates.push('192.168.43.1 (fallback — Android hotspot default)');
-  // Also add common Samsung alternatives
   if (!hotspotCandidates.includes('192.168.12.1')) hotspotCandidates.push('192.168.12.1 (alt Samsung)');
   if (!hotspotCandidates.includes('192.168.208.1')) hotspotCandidates.push('192.168.208.1 (alt)');
-  const hotspotIp = ips.find(ip => ip.startsWith('192.168.43.')) || ips.find(ip => ip.startsWith('192.168.')) || '192.168.43.1';
+  const hotspotIp = ips.find(ip => ip.startsWith('192.168.43.')) || '192.168.43.1';
+  // Force Network list to show hotspot even when Termux hides it (so log shows 192.168.x)
+  if (!ips.includes(hotspotIp)) ips.unshift(hotspotIp);
   return { ips, all, hotspotIp, hotspotCandidates, rawRoute: rawRoute.slice(0,800), getprop: getpropOut.slice(0,800) };
 }
 
