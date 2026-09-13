@@ -178,5 +178,14 @@ ${ips.map(ip => `║  Network: http://${ip}:${PORT} `.padEnd(53) + '║').join('
   `);
   console.log(`[Hint] 100.101.218.190 is mobile CGNAT (not hotspot). Termux 'cannot bind netlink' → hotspot IP is still 192.168.43.1, try http://${hotspotIp}:${PORT}/kiosk even if not in list`);
   console.log(`[QR] Customers scan: http://${hotspotIp}:${PORT}/kiosk?stall=stall-001`);
+  console.log(`[Termux] If 192.168.43.1 fails, hotspot AP isolation ON → Settings → Hotspot → Configure → Advanced → AP isolation OFF. Also try python3 -m http.server 8000 and curl http://192.168.43.1:8000`);
   if (!staticDir) console.log('Tip: Run \`npm run build --workspace=web-client\` to enable the SPA UI.');
+});
+
+httpServer.on('error', (err: any) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`[Error] Port ${PORT} already in use → pkill node; pkill -f http.server; node packages/server-core/dist/server.js`);
+    process.exit(1);
+  }
+  console.error('[Error] Server', err);
 });
