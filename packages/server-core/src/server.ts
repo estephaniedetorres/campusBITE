@@ -94,7 +94,11 @@ app.get('/api/debug/ips', (req, res) => {
   // Also try termux-wifi-connectioninfo if available
   let wifiInfo = '';
   try { wifiInfo = execSync('termux-wifi-connectioninfo 2>/dev/null | head -20', { encoding:'utf-8', timeout:800 }).trim(); } catch {}
-  res.json({ ips, all, hotspotIp, hotspotCandidates, rawRoute: (rawRoute||'').slice(0,1000), getprop: (getprop||'').slice(0,1000), wifiInfo: wifiInfo.slice(0,1000) });
+  res.json({ ips, all, hotspotIp, hotspotCandidates, rawRoute: (rawRoute||'').slice(0,1000), getprop: (getprop||'').slice(0,1000), wifiInfo: wifiInfo.slice(0,1000), localAddr: (req.socket as any).localAddress, remoteAddr: req.ip });
+});
+
+app.get('/api/debug/ping', (req, res) => {
+  res.json({ ok: true, localAddr: (req.socket as any).localAddress, remoteAddr: req.ip, headers: req.headers, time: new Date().toISOString() });
 });
 
 // API routes (auth first so /auth/login is public)
@@ -178,8 +182,17 @@ ${ips.map(ip => `║  Network: http://${ip}:${PORT} `.padEnd(53) + '║').join('
   `);
   console.log(`[Hint] 100.101.218.190 is mobile CGNAT (not hotspot). Termux 'cannot bind netlink' → hotspot IP is still 192.168.43.1, try http://${hotspotIp}:${PORT}/kiosk even if not in list`);
   console.log(`[QR] Customers scan: http://${hotspotIp}:${PORT}/kiosk?stall=stall-001`);
-  console.log(`[Termux] If 192.168.43.1 fails, hotspot AP isolation ON → Settings → Hotspot → Configure → Advanced → AP isolation OFF. Also try python3 -m http.server 8000 and curl http://192.168.43.1:8000`);
+  console.log(`[Termux] If 192.168.43.1 fails from Termux new session, try: ping 192.168.43.1; curl http://127.0.0.1:${PORT}/api/health; python3 -m http.server 8000 and curl http://192.168.43.1:8000`);
+  console.log(`[Termux] Diagnosis: localhost ok but 192.168.43.1 not → hotspot started AFTER node? Do: pkill node; Hotspot ON; node packages/server-core/dist/server.js`);
   if (!staticDir) console.log('Tip: Run \`npm run build --workspace=web-client\` to enable the SPA UI.');
+  // Termux hotspot second bind: try explicit 192.168.43.1 if 0.0.0.0 didn't cover it (Samsung ap0)
+  if (HOST === '0.0.0.0' && hotspotIp === '192.168.43.1' && !ips.includes('192.168.43.1')) {
+    try {
+      const extra = createServer(app);
+      extra.listen(PORT, '192.168.43.1', () => console.log(`[Termux] Extra hotspot bind ok http://192.168.43.1:${PORT}`));
+      extra.on('error', (e:any) => console.log(`[Termux] Extra hotspot bind failed (normal if not Termux): ${e.message}`));
+    } catch {}
+  }
 });
 
 httpServer.on('error', (err: any) => {

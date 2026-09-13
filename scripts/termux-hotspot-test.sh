@@ -18,9 +18,12 @@ cat /proc/net/arp 2>&1 | head -20
 echo ""
 echo "6. Test localhost (must be ok):"
 curl -s http://localhost:3000/api/health | head -c 200; echo ""
+curl -s http://127.0.0.1:3000/api/health | head -c 200; echo " (127.0.0.1)"
 echo ""
-echo "7. Test hotspot IP 192.168.43.1:"
-curl -s --connect-timeout 3 http://192.168.43.1:3000/api/health | head -c 200; echo "" || echo "192.168.43.1 failed"
+echo "7. Test hotspot IP 192.168.43.1 (if fails, hotspot not sharing):"
+curl -v --connect-timeout 3 http://192.168.43.1:3000/api/health 2>&1 | head -30
+curl -s --connect-timeout 3 http://192.168.43.1:3000/api/health | head -c 200; echo "" || echo "192.168.43.1 failed — try: pkill node; Hotspot OFF→ON; node ... again"
+ping -c 1 -W 2 192.168.43.1 2>&1 | head -5 || echo "ping failed"
 echo ""
 echo "8. Test alternatives:"
 for ip in 192.168.12.1 192.168.49.1 192.168.208.1 192.168.137.1; do echo -n "$ip: "; curl -s --connect-timeout 2 http://$ip:3000/api/health | head -c 60 | tr -d '\n'; echo ""; done
