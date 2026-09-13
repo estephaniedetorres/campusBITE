@@ -48,9 +48,6 @@ app.get('/api/health', (req, res) => {
         timestamp: new Date().toISOString(),
     });
 });
-app.get('/api/debug/ping', (req, res) => {
-    res.json({ ok: true, localAddr: req.socket.localAddress, remoteAddr: req.ip, headers: req.headers, time: new Date().toISOString() });
-});
 // API routes (auth first so /auth/login is public)
 app.use('/api', authRouter);
 app.use('/api', menuRouter);
@@ -60,8 +57,6 @@ const wsGateway = new WSGateway(httpServer);
 app.use('/api', createOrderRouter(wsGateway));
 app.use('/api', inventoryRouter);
 app.use('/api', auditRouter);
-// Also expose WS stats
-app.get('/api/ws-stats', (req, res) => res.json(wsGateway.getStats()));
 // Serve bundled SPA static files if present
 // Priority: 1) packages/web-client/dist  2) ../web-client/dist  3) ../../web/dist  4) public folder
 const candidateStaticDirs = [
