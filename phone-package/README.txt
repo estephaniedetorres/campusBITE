@@ -46,9 +46,12 @@ Clients:
   http://192.168.43.1:3000/kiosk?stall=stall-001
   http://192.168.43.1:3000/login → admin/admin123
 
-If "cannot execute required file not found" on node dist/server.js:
-  You ran glibc Node tar (wrong) or ran from wrong dir. Use pkg Node only: which node → must be /data/data/com.termux/files/usr/bin/node
-  pwd → must be ~/CampusBITE, then node packages/server-core/dist/server.js
+If "cannot execute required file not found" or "Cannot find module 'express'":
+  - Wrong path: from ~/CampusBITE run `node packages/server-core/dist/server.js` NOT `node dist/server.js`
+  - Missing node_modules: even with prebuilt dist you still need deps once with internet:
+    pkg update -y; pkg install nodejs -y; cd ~/CampusBITE; npm install --ignore-scripts; ls node_modules/express
+  - Glibc Node: which node → must be /data/data/com.termux/files/usr/bin/node, NOT .../node-v22.../bin/node. If glibc, rm -rf ~/CampusBITE/node-v22* && hash -r
+  - Wrong dir: pwd → must be ~/CampusBITE (check case: ls ~/campusBITE vs ~/CampusBITE)
 
 If still "nothing show" / "stuck trying 192.168.43.1":
   - Samsung hotspot AP isolation ON → Configure → Advanced → AP isolation OFF
