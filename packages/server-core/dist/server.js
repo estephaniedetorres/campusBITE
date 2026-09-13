@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:http';
 import os from 'node:os';
+import { execSync } from 'node:child_process';
 import './db/database.js'; // ensure DB initialized
 import { menuRouter } from './routes/menuRoutes.js';
 import { createOrderRouter } from './routes/orderRoutes.js';
@@ -24,8 +25,7 @@ app.use((req, _res, next) => {
     console.log(`[HTTP] ${req.method} ${req.path}`);
     next();
 });
-// Health endpoint — includes all interfaces and hotspot hint for Termux
-app.get('/api/health', (req, res) => {
+function getHotspotIp() {
     const nets = os.networkInterfaces();
     const ips = [];
     const all = {};
@@ -38,7 +38,41 @@ app.get('/api/health', (req, res) => {
                     ips.push(a.address);
             }
     }
-    const hotspotIp = ips.find(ip => ip.startsWith('192.168.43.')) || '192.168.43.1';
+    // Termux: os.networkInterfaces() may miss hotspot due to netlink permission → try alternatives
+    let hotspotCandidates = [...ips];
+    let rawRoute = '';
+    let getpropOut = '';
+    // Try /proc/net/route for 192.168.43.x gateway
+    try {
+        rawRoute = fs.readFileSync('/proc/net/route', 'utf-8').slice(0, 2000);
+        // route gateway is little-endian hex, 0101A8C0 = 192.168.1.1, 012B2BA8 = 192.168.43.1? Actually 01 = 1, 2B=43, etc.
+        // Simpler: just check if file contains C0A802... We just return raw for debug, hotspotIp stays fallback.
+        if (rawRoute.includes('C0A8') && !hotspotCandidates.some(ip => ip.startsWith('192.168.43.'))) {
+            hotspotCandidates.push('192.168.43.1 (from /proc/net/route)');
+        }
+    }
+    catch { }
+    try {
+        getpropOut = execSync('getprop 2>/dev/null | grep -i "192.168.43" | head -5', { encoding: 'utf-8', timeout: 500 }).trim();
+        if (getpropOut && !hotspotCandidates.some(ip => ip.includes('192.168.43.'))) {
+            hotspotCandidates.push('192.168.43.1 (from getprop)');
+        }
+    }
+    catch { }
+    // Always ensure fallback
+    if (!hotspotCandidates.some(ip => ip.startsWith('192.168.43.')))
+        hotspotCandidates.push('192.168.43.1 (fallback — Android hotspot default)');
+    // Also add common Samsung alternatives
+    if (!hotspotCandidates.includes('192.168.12.1'))
+        hotspotCandidates.push('192.168.12.1 (alt Samsung)');
+    if (!hotspotCandidates.includes('192.168.208.1'))
+        hotspotCandidates.push('192.168.208.1 (alt)');
+    const hotspotIp = ips.find(ip => ip.startsWith('192.168.43.')) || ips.find(ip => ip.startsWith('192.168.')) || '192.168.43.1';
+    return { ips, all, hotspotIp, hotspotCandidates, rawRoute: rawRoute.slice(0, 800), getprop: getpropOut.slice(0, 800) };
+}
+// Health endpoint — includes all interfaces and hotspot hint for Termux
+app.get('/api/health', (req, res) => {
+    const { ips, all, hotspotIp, hotspotCandidates, rawRoute, getprop } = getHotspotIp();
     res.json({
         ok: true,
         service: 'CampusBITE server-core',
@@ -46,12 +80,24 @@ app.get('/api/health', (req, res) => {
         ips,
         allInterfaces: all,
         hotspotIp,
+        hotspotCandidates,
         hotspotUrl: `http://${hotspotIp}:${PORT}/kiosk?stall=stall-001`,
         port: PORT,
         ws: `ws://${hotspotIp}:${PORT}/ws`,
-        hint: 'If hotspot ON, use hotspotIp even if not in ips — server listens on 0.0.0.0. Termux: cannot bind netlink → hotspotIp fallback is 192.168.43.1',
+        debug: { rawRoute: (rawRoute || '').slice(0, 400), getprop: (getprop || '').slice(0, 400) },
+        hint: '100.101.218.190 is mobile carrier CGNAT (not hotspot). If hotspot ON, use 192.168.43.1 even if not in ips — server listens on 0.0.0.0. Termux cannot bind netlink → hotspotIp fallback',
         timestamp: new Date().toISOString(),
     });
+});
+app.get('/api/debug/ips', (req, res) => {
+    const { ips, all, hotspotIp, hotspotCandidates, rawRoute, getprop } = getHotspotIp();
+    // Also try termux-wifi-connectioninfo if available
+    let wifiInfo = '';
+    try {
+        wifiInfo = execSync('termux-wifi-connectioninfo 2>/dev/null | head -20', { encoding: 'utf-8', timeout: 800 }).trim();
+    }
+    catch { }
+    res.json({ ips, all, hotspotIp, hotspotCandidates, rawRoute: (rawRoute || '').slice(0, 1000), getprop: (getprop || '').slice(0, 1000), wifiInfo: wifiInfo.slice(0, 1000) });
 });
 // API routes (auth first so /auth/login is public)
 app.use('/api', authRouter);
@@ -110,31 +156,27 @@ else {
 // 404 for API
 app.use('/api', (req, res) => res.status(404).json({ error: `API route ${req.method} ${req.path} not found` }));
 httpServer.listen(PORT, HOST, () => {
-    const nets = os.networkInterfaces();
-    const ips = [];
-    const all = [];
-    for (const [name, addrs] of Object.entries(nets)) {
-        for (const a of addrs || [])
-            if (a.family === 'IPv4') {
-                all.push(`${name}:${a.address}${a.internal ? '(internal)' : ''}`);
-                if (!a.internal)
-                    ips.push(a.address);
-            }
-    }
-    const hotspotIp = ips.find(ip => ip.startsWith('192.168.43.')) || '192.168.43.1';
+    const { ips, all, hotspotIp, hotspotCandidates } = getHotspotIp();
+    const allFlat = [];
+    for (const [name, addrs] of Object.entries(all))
+        for (const a of addrs)
+            allFlat.push(`${name}:${a}`);
     console.log(`
 ╔════════════════════════════════════════════════════╗
 ║  CampusBITE Server running                        ║
 ║  Local:   http://localhost:${PORT}                  ║
 ${ips.map(ip => `║  Network: http://${ip}:${PORT} `.padEnd(53) + '║').join('\n')}
 ║  Hotspot (try even if not listed): http://${hotspotIp}:${PORT}      ║
+║  Hotspot candidates: ${hotspotCandidates.slice(0, 3).join(', ')} ║
 ║  WS:      ws://${hotspotIp}:${PORT}/ws                      ║
 ║  Health:  http://localhost:${PORT}/api/health       ║
-║  All ifaces: ${all.join(', ')} ║
+║  Debug:   http://localhost:${PORT}/api/debug/ips    ║
+║  All ifaces: ${allFlat.join(', ')} ║
 ╚════════════════════════════════════════════════════╝
   `);
-    console.log(`[Hint] Termux 'cannot bind netlink' → hotspot IP is still 192.168.43.1, try http://${hotspotIp}:${PORT}/kiosk even if not in list`);
+    console.log(`[Hint] 100.101.218.190 is mobile CGNAT (not hotspot). Termux 'cannot bind netlink' → hotspot IP is still 192.168.43.1, try http://${hotspotIp}:${PORT}/kiosk even if not in list`);
+    console.log(`[QR] Customers scan: http://${hotspotIp}:${PORT}/kiosk?stall=stall-001`);
     if (!staticDir)
-        console.log('Tip: Run `npm run build --workspace=web-client` to enable the SPA UI.');
+        console.log('Tip: Run \`npm run build --workspace=web-client\` to enable the SPA UI.');
 });
 //# sourceMappingURL=server.js.map
