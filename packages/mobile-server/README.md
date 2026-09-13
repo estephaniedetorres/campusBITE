@@ -1,66 +1,56 @@
-# CampusBITE Mobile — Expo Go (UI) + Phone Server (Termux)
+# CampusBITE Mobile Server (Android Host)
 
-This package is the **Expo** wrapper for CampusBITE. It runs in **Expo Go** for quick UI testing, and as a **Dev Build/APK** for the final Foreground Service + embedded Node.
+This package is the **React Native Android wrapper** that turns an Android phone into the CampusBITE server via Wi-Fi Hotspot.
 
-## Structure
+## What it does (Learning)
 
-```
-packages/mobile-server
-├── app.json              # Expo config (name, slug, package com.campusbite.app, expo-router)
-├── app/
-│   ├── _layout.tsx       # Stack + StatusBar
-│   └── index.tsx         # Server Status + QR + Quick Open (Kiosk/POS/KDS/Admin)
-├── constants/api.ts      # API base (default http://192.168.43.1:3000 hotspot)
-├── assets/               # icon.png / splash.png (1x1 placeholders — replace)
-├── babel.config.js       # babel-preset-expo + expo-router
-└── metro.config.js
-```
+1. **Foreground Service** (`android/app/src/main/java/com/campusbite/ServerForegroundService.java`):
+   - Starts a sticky Android `Service` with a persistent notification: *"CampusBITE Server Active — 192.168.43.1:3000"*
+   - Acquires a `PARTIAL_WAKE_LOCK` so Node.js keeps running when screen is off.
+   - Returns `START_STICKY` so Android restarts it if killed.
 
-## What it does
+2. **Node.js Mobile Bridge** (`src/bridge/nodeBridge.ts`):
+   - Uses `nodejs-mobile-react-native` to spawn the `server-core` Express+SQLite engine inside the RN app.
+   - Communicates via `rn-bridge` channel: lifecycle (pause/resume), IP broadcast, active connection count.
 
-1. **Expo Go UI (current, no build):**
-   - Fetches `/api/health` and `/api/stalls` from phone server at `http://192.168.43.1:3000` (or dev PC `http://192.168.1.104:3000`).
-   - Shows server Online/Offline, IPs, port, WS URL.
-   - Generates stall QR `http://<hotspot-ip>:3000/kiosk?stall=stall-001` (customers scan → Kiosk filtered). Kiosk is **only public** page.
-   - Tiles to open Kiosk/POS/KDS/Admin in system browser via `Linking.openURL`. POS/KDS/Admin require login (`admin/admin123`) — server enforces 403 otherwise.
+3. **Server Status UI** (`src/components/ServerStatus.tsx`):
+   - Shows Hotspot IP, QR code (other phones scan to join), connected clients, uptime.
+   - Toggle to start/stop foreground service.
 
-2. **Phone as Server (still Termux):**
-   - Expo Go **cannot** run embedded Node — that needs `nodejs-mobile-react-native` + Dev Build.
-   - Node server still runs in **Termux** on same phone: `bash scripts/phone-server.sh` → `node dist/server.js` at `192.168.43.1:3000`.
-   - Expo Go and Termux both run on same phone, share `192.168.43.1`.
-
-3. **Foreground Service + Embedded Node (final APK, not Expo Go):**
-   - Requires `npx expo prebuild` + `nodejs-mobile-react-native` + `ServerForegroundService.java` with `FOREGROUND_SERVICE` + `WAKE_LOCK`.
-   - Build: `npx expo run:android` or `cd android && ./gradlew assembleRelease`.
-
-## Quick Start — Expo Go
+## Quick setup (when you have Android Studio)
 
 ```bash
-# On PC (same repo, after git clone):
-npm install --workspace=mobile-server
-npx --workspace=mobile-server expo start
-# → Terminal shows QR: exp://192.168.1.104:8081
+# inside packages/mobile-server
+npx react-native init CampusBITE --skip-install  # already done
+npm install
+npm install nodejs-mobile-react-native react-native-network-info react-native-device-info react-native-qrcode-svg
 
-# On Android phone: Install Expo Go from Play Store → Open → Scan QR → CampusBITE App opens
-# In app: set Server URL to http://192.168.43.1:3000 (hotspot) or dev PC IP, tap Refresh Health
+# Then configure android/app/src/main/AndroidManifest.xml:
+# <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+# <uses-permission android:name="android.permission.WAKE_LOCK" />
+# <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+# <service android:name=".ServerForegroundService" android:foregroundServiceType="dataSync" />
+
+# Build APK:
+cd android && ./gradlew assembleRelease
+# APK at android/app/build/outputs/apk/release/app-release.apk
+# Install on phone: adb install app-release.apk OR copy APK and tap to install
 ```
 
-## Phone Server + Expo Go together (hotspot)
+## Alternative: Quick test without building APK (Termux)
 
-```bash
-# Phone Termux: start Node server (keep Termux open + Hotspot ON)
-bash scripts/phone-server.sh
-# Phone Expo Go: scan PC's exp:// QR (PC and phone on same WiFi/hotspot) → App shows health Online
-# Other phones: join phone hotspot → browser http://192.168.43.1:3000/kiosk?stall=stall-001 or scan QR from Expo app
-```
+On any Android phone:
+1. Install Termux from F-Droid
+2. `pkg install nodejs git`
+3. Copy `packages/server-core` + `packages/web-client/dist` to phone
+4. `node packages/server-core/dist/server.js`  and turn on Hotspot
+5. Other devices browse to `http://192.168.43.1:3000`
 
-## Build APK (later)
+## Current Status
 
-```bash
-npx expo prebuild
-# add nodejs-mobile-react-native, configure AndroidManifest.xml per docs/phone-server.sh
-npx expo run:android
-# or: cd android && ./gradlew assembleRelease → app-release.apk
-```
+This folder is a **placeholder scaffold** so the monorepo is complete. The working system right now runs as:
+- `packages/server-core` (Express + SQLite + WS) + `packages/web-client` (SPA)
+- On dev: `npm run dev:server` + `npm run dev:client`
+- On phone (Termux or future APK): `node dist/server.js` serves the built SPA from `web-client/dist`.
 
-See root README for Termux phone-server and API docs.
+See root README for wiring details.
