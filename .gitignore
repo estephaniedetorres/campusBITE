@@ -3,3 +3,7 @@ data/*.db
 data/*.db-*
 .env
 packages/server-core/data
+
+phone-package/node-*.tar.xz
+phone-package/server-core-dist
+phone-package/web-client-dist
