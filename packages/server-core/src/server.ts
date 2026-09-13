@@ -29,20 +29,30 @@ app.use((req, _res, next) => {
   next();
 });
 
-// Health endpoint
+// Health endpoint — includes all interfaces and hotspot hint for Termux
 app.get('/api/health', (req, res) => {
   const nets = os.networkInterfaces();
   const ips: string[] = [];
-  for (const iface of Object.values(nets)) {
-    for (const a of iface || []) if (a.family === 'IPv4' && !a.internal) ips.push(a.address);
+  const all: Record<string, string[]> = {};
+  for (const [name, addrs] of Object.entries(nets)) {
+    all[name] = [];
+    for (const a of addrs || []) if (a.family === 'IPv4') {
+      all[name].push(`${a.address}${a.internal ? ' (internal)' : ''}`);
+      if (!a.internal) ips.push(a.address);
+    }
   }
+  const hotspotIp = ips.find(ip => ip.startsWith('192.168.43.')) || '192.168.43.1';
   res.json({
     ok: true,
     service: 'CampusBITE server-core',
     uptime: process.uptime(),
     ips,
+    allInterfaces: all,
+    hotspotIp,
+    hotspotUrl: `http://${hotspotIp}:${PORT}/kiosk?stall=stall-001`,
     port: PORT,
-    ws: `ws://${ips[0] || 'localhost'}:${PORT}/ws`,
+    ws: `ws://${hotspotIp}:${PORT}/ws`,
+    hint: 'If hotspot ON, use hotspotIp even if not in ips — server listens on 0.0.0.0. Termux: cannot bind netlink → hotspotIp fallback is 192.168.43.1',
     timestamp: new Date().toISOString(),
   });
 });
@@ -112,17 +122,25 @@ app.use('/api', (req, res) => res.status(404).json({ error: `API route ${req.met
 httpServer.listen(PORT, HOST, () => {
   const nets = os.networkInterfaces();
   const ips: string[] = [];
-  for (const iface of Object.values(nets)) {
-    for (const a of iface || []) if (a.family === 'IPv4' && !a.internal) ips.push(a.address);
+  const all: string[] = [];
+  for (const [name, addrs] of Object.entries(nets)) {
+    for (const a of addrs || []) if (a.family === 'IPv4') {
+      all.push(`${name}:${a.address}${a.internal ? '(internal)' : ''}`);
+      if (!a.internal) ips.push(a.address);
+    }
   }
+  const hotspotIp = ips.find(ip => ip.startsWith('192.168.43.')) || '192.168.43.1';
   console.log(`
 ╔════════════════════════════════════════════════════╗
 ║  CampusBITE Server running                        ║
 ║  Local:   http://localhost:${PORT}                  ║
 ${ips.map(ip => `║  Network: http://${ip}:${PORT} `.padEnd(53) + '║').join('\n')}
-║  WS:      ws://<ip>:${PORT}/ws                      ║
+║  Hotspot (try even if not listed): http://${hotspotIp}:${PORT}      ║
+║  WS:      ws://${hotspotIp}:${PORT}/ws                      ║
 ║  Health:  http://localhost:${PORT}/api/health       ║
+║  All ifaces: ${all.join(', ')} ║
 ╚════════════════════════════════════════════════════╝
   `);
+  console.log(`[Hint] Termux 'cannot bind netlink' → hotspot IP is still 192.168.43.1, try http://${hotspotIp}:${PORT}/kiosk even if not in list`);
   if (!staticDir) console.log('Tip: Run `npm run build --workspace=web-client` to enable the SPA UI.');
 });
