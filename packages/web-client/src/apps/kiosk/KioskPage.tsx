@@ -109,40 +109,40 @@ export default function KioskPage() {
           {qrTable && <div className="bg-brand-100 border px-3 py-1.5 rounded-xl text-xs font-bold">Table {qrTable}</div>}
         </div>
       )}
-      {/* Stall selector — hidden if QR locks to single stall? Keep but dim others */}
-      <div className="flex flex-wrap gap-2 items-center">
-        <div className="flex gap-2">
+      {/* Stall selector — responsive wrap + scroll on mobile */}
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-2 sm:items-center sm:flex-wrap">
+        <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-none -mx-1 px-1 snap-x snap-mandatory">
           {stalls.map(s => (
             <button key={s.id} onClick={() => setStallId(s.id)}
-              className={`px-4 py-2 rounded-full text-sm font-semibold border shadow-sm ${stallId===s.id ? 'bg-brand-600 text-brand-100 border-brand-600' : 'bg-brand-100 border-brand-300/40 text-brand-700 hover:bg-brand-300'} ${qrStall && s.id!==qrStall ? 'opacity-50' : ''}`}>
+              className={`snap-start shrink-0 px-3 sm:px-4 py-2.5 rounded-full text-xs sm:text-sm font-semibold border shadow-sm min-h-[44px] ${stallId===s.id ? 'bg-brand-600 text-brand-100 border-brand-600' : 'bg-brand-100 border-brand-300/40 text-brand-700 hover:bg-brand-300'} ${qrStall && s.id!==qrStall ? 'opacity-50' : ''}`}>
               <Utensils size={14} className="inline mr-1.5 -mt-0.5" />{s.name}
             </button>
           ))}
         </div>
         {lastOrder && (
-          <div className="ml-auto bg-brand-100 border border-brand-300 rounded-xl px-4 py-2 text-sm flex items-center gap-2">
-            <CheckCircle size={16} className="text-brand-500" />
-            <span>Order <b>{lastOrder.order.pickup_code}</b> • {liveStatus || lastOrder.order.status}</span>
-            <span className="hidden md:inline text-brand-700/60">Show this code at POS</span>
+          <div className="w-full sm:w-auto sm:ml-auto bg-brand-100 border border-brand-300 rounded-xl px-3 sm:px-4 py-2 text-xs sm:text-sm flex items-center gap-2">
+            <CheckCircle size={14} className="text-brand-500 shrink-0" />
+            <span className="truncate">Order <b>{lastOrder.order.pickup_code}</b> • {liveStatus || lastOrder.order.status}</span>
+            <span className="hidden md:inline text-brand-700/60 whitespace-nowrap">Show code at POS</span>
           </div>
         )}
       </div>
 
-      {/* Category tabs */}
-      <div className="flex gap-2 overflow-auto pb-1">
-        <button onClick={()=>setActiveCat('all')} className={`px-4 py-2 rounded-full text-sm whitespace-nowrap border shadow-sm ${activeCat==='all'?'bg-brand-600 text-brand-100 border-brand-600':'bg-brand-100 border-brand-300/40 text-brand-700 hover:bg-brand-300'}`}>All</button>
+      {/* Category tabs - scrollable */}
+      <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory scrollbar-none">
+        <button onClick={()=>setActiveCat('all')} className={`snap-start shrink-0 px-3 sm:px-4 py-2.5 rounded-full text-xs sm:text-sm whitespace-nowrap border shadow-sm min-h-[44px] ${activeCat==='all'?'bg-brand-600 text-brand-100 border-brand-600':'bg-brand-100 border-brand-300/40 text-brand-700 hover:bg-brand-300'}`}>All</button>
         {categories.map(c => (
-          <button key={c.id} onClick={()=>setActiveCat(c.id)} className={`px-4 py-2 rounded-full text-sm whitespace-nowrap border shadow-sm ${activeCat===c.id?'bg-brand-600 text-brand-100 border-brand-600':'bg-brand-100 border-brand-300/40 text-brand-700 hover:bg-brand-300'}`}>{c.name}</button>
+          <button key={c.id} onClick={()=>setActiveCat(c.id)} className={`snap-start shrink-0 px-3 sm:px-4 py-2.5 rounded-full text-xs sm:text-sm whitespace-nowrap border shadow-sm min-h-[44px] ${activeCat===c.id?'bg-brand-600 text-brand-100 border-brand-600':'bg-brand-100 border-brand-300/40 text-brand-700 hover:bg-brand-300'}`}>{c.name}</button>
         ))}
       </div>
 
-      {/* Menu grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      {/* Menu grid - iPhone 17 Pro Max 430:2col, Android 360:2col, Tablet 768:3col, Laptop 1024:4col */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-4">
         {filtered.map(item => {
           const qty = cart.get(item.id) || 0;
           return (
-            <div key={item.id} className="bg-brand-100 rounded-2xl border border-brand-300/40 p-4 flex flex-col shadow-sm hover:shadow-md transition">
-              <div className="w-full h-32 rounded-xl overflow-hidden bg-brand-100 border border-brand-300/20 relative">
+            <div key={item.id} className="bg-brand-100 rounded-2xl border border-brand-300/40 p-3 sm:p-4 flex flex-col shadow-sm hover:shadow-md transition">
+              <div className="w-full h-28 sm:h-32 rounded-xl overflow-hidden bg-brand-100 border border-brand-300/20 relative">
                 <img
                   src={getMenuImage(item)}
                   alt={item.name}
@@ -151,21 +151,21 @@ export default function KioskPage() {
                   onError={(e)=>{ (e.currentTarget as HTMLImageElement).style.display='none'; (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove('hidden'); }}
                 />
                 <div className="hidden absolute inset-0 bg-gradient-to-br from-brand-100 to-brand-300/30 flex items-center justify-center text-brand-300">
-                  <ImageIcon size={32} />
+                  <ImageIcon size={28} className="sm:w-8 sm:h-8" />
                 </div>
                 {!item.image_url && !fallbackImages[item.id] ? null : null}
               </div>
-              <div className="font-semibold mt-3 leading-tight text-brand-700 line-clamp-1">{item.name}</div>
-              <div className="text-xs text-brand-700/60 line-clamp-2">{item.description}</div>
-              <div className="flex items-center justify-between mt-3">
-                <span className="font-bold text-brand-500">₱{item.price}</span>
+              <div className="font-semibold mt-2 sm:mt-3 leading-tight text-brand-700 text-sm sm:text-base line-clamp-1">{item.name}</div>
+              <div className="text-[11px] sm:text-xs text-brand-700/60 line-clamp-2 min-h-[32px]">{item.description}</div>
+              <div className="flex items-center justify-between mt-2 sm:mt-3">
+                <span className="font-bold text-brand-500 text-sm sm:text-base">₱{item.price}</span>
                 {qty === 0 ? (
-                  <button onClick={()=>add(item.id)} className="bg-brand-600 hover:bg-brand-300 text-brand-100 rounded-full p-2 shadow-sm"><Plus size={16} /></button>
+                  <button onClick={()=>add(item.id)} className="bg-brand-600 hover:bg-brand-300 text-brand-100 rounded-full p-2 sm:p-2.5 shadow-sm min-w-[40px] min-h-[40px] sm:min-w-[44px] sm:min-h-[44px] flex items-center justify-center"><Plus size={16} /></button>
                 ) : (
-                  <div className="flex items-center gap-2 bg-brand-600 text-brand-100 rounded-full px-1 py-1 shadow-sm">
-                    <button onClick={()=>sub(item.id)} className="w-7 h-7 rounded-full bg-brand-100/20 flex items-center justify-center"><Minus size={14} /></button>
+                  <div className="flex items-center gap-1.5 bg-brand-600 text-brand-100 rounded-full px-1 py-1 shadow-sm">
+                    <button onClick={()=>sub(item.id)} className="w-8 h-8 sm:w-7 sm:h-7 rounded-full bg-brand-100/20 flex items-center justify-center"><Minus size={14} /></button>
                     <span className="w-6 text-center text-sm font-bold">{qty}</span>
-                    <button onClick={()=>add(item.id)} className="w-7 h-7 rounded-full bg-brand-100/20 flex items-center justify-center"><Plus size={14} /></button>
+                    <button onClick={()=>add(item.id)} className="w-8 h-8 sm:w-7 sm:h-7 rounded-full bg-brand-100/20 flex items-center justify-center"><Plus size={14} /></button>
                   </div>
                 )}
               </div>
@@ -174,15 +174,15 @@ export default function KioskPage() {
         })}
       </div>
 
-      {/* Cart drawer */}
-      <div className="fixed bottom-0 left-0 right-0 bg-brand-100 border-t border-brand-300/40 shadow-2xl">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-4">
-          <div className="flex-1">
-            <div className="text-sm font-semibold flex items-center gap-2 text-brand-700"><ShoppingCart size={16} /> {cartItems.length} items • ₱{total.toFixed(2)}</div>
-            <div className="text-xs text-brand-700/60 truncate">{cartItems.map(i=>`${i.name} ×${i.qty}`).join(', ') || 'Cart empty - add items'}</div>
+      {/* Cart drawer - safe area for iPhone */}
+      <div className="fixed bottom-0 left-0 right-0 bg-brand-100 border-t border-brand-300/40 shadow-2xl pb-safe">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 flex items-center gap-3 sm:gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="text-xs sm:text-sm font-semibold flex items-center gap-2 text-brand-700"><ShoppingCart size={14} className="sm:w-4 sm:h-4 shrink-0" /> <span className="truncate">{cartItems.length} items • ₱{total.toFixed(2)}</span></div>
+            <div className="text-[11px] sm:text-xs text-brand-700/60 truncate">{cartItems.map(i=>`${i.name} ×${i.qty}`).join(', ') || 'Cart empty - add items'}</div>
           </div>
           <button disabled={cartItems.length===0 || loading} onClick={checkout}
-            className="bg-brand-600 hover:bg-brand-300 disabled:bg-brand-300/40 text-brand-100 font-bold px-6 py-3 rounded-xl shadow-sm transition">
+            className="shrink-0 bg-brand-600 hover:bg-brand-300 disabled:bg-brand-300/40 text-brand-100 font-bold px-4 sm:px-6 py-3 rounded-xl shadow-sm transition text-sm sm:text-base min-h-[44px]">
             {loading ? 'Placing...' : `Checkout • ₱${total.toFixed(2)}`}
           </button>
         </div>

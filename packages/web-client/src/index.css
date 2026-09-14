@@ -34,3 +34,30 @@ body { background-color: #FFE6A7; color: #432818; }
 ::-webkit-scrollbar-thumb { background: #BB9457; border-radius: 99px; }
 ::-webkit-scrollbar-thumb:hover { background: #432818; }
 ::-webkit-scrollbar-track { background: #FFE6A7; }
+
+/* === Responsive: iPhone 17 Pro Max / 16 / Android / Tablet / Laptop === */
+/* Safe area for iPhone notch / Dynamic Island */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+.pb-safe { padding-bottom: max(0.75rem, env(safe-area-inset-bottom)); }
+.pt-safe { padding-top: env(safe-area-inset-top); }
+.header-safe { padding-top: env(safe-area-inset-top); }
+
+/* Touch targets: minimum 44px for mobile (iOS HIG) */
+@media (max-width: 768px) {
+  button, a { min-height: 44px; }
+  input, select, textarea { font-size: 16px !important; } /* prevent iOS zoom */
+}
+
+/* Improve tap highlight */
+* { -webkit-tap-highlight-color: rgba(67, 40, 24, 0.15); }
+
+/* Responsive images - never overflow */
+img { max-width: 100%; height: auto; }
+
+/* Smooth scrolling for anchor links */
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }

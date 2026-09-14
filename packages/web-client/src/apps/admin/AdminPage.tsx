@@ -63,9 +63,9 @@ export default function AdminPage() {
         </div>
       </div>
 
-      <div className="flex gap-2 overflow-auto pb-1">
+      <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory scrollbar-none">
         {visibleTabs.map(t=>{ const Icon=t.i; return (
-          <button key={t.k} onClick={()=>setTab(t.k)} className={`px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 border whitespace-nowrap ${tab===t.k?'bg-brand-600 text-brand-100 border-brand-600':'bg-brand-100 hover:bg-brand-300'}`}><Icon size={16}/>{t.l}</button>
+          <button key={t.k} onClick={()=>setTab(t.k)} className={`snap-start shrink-0 px-3 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 border whitespace-nowrap min-h-[44px] ${tab===t.k?'bg-brand-600 text-brand-100 border-brand-600':'bg-brand-100 hover:bg-brand-300 text-brand-700 border-brand-300/40'}`}><Icon size={16}/>{t.l}</button>
         );})}
         {!isAdmin && <span className="ml-auto text-xs text-brand-700/60 py-2 hidden md:block">Inventory/BOM/Audits hidden for stall owners</span>}
       </div>
@@ -213,7 +213,7 @@ function MenuManagementTab(){
       <div className="bg-brand-100 rounded-2xl border border-brand-300/40 p-4">
         <h4 className="font-bold flex items-center gap-2"><QrCode size={16}/> Stall QR Codes — Customers scan to open Kiosk</h4>
         <p className="text-xs text-brand-700/60 mt-1">Offline QR: encodes <code>http://&lt;hotspot-ip&gt;:3000/kiosk?stall=STALL_ID</code>. Print and post at stall front. Kiosk is the <b>only public</b> page.</p>
-        <div className="grid md:grid-cols-2 gap-4 mt-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           {visibleStalls.map((s:any)=>{
             const ip = health?.ips?.[0] || window.location.hostname;
             const port = health?.port || window.location.port || '3000';
@@ -222,17 +222,17 @@ function MenuManagementTab(){
             const url = `http://${host}/kiosk?stall=${s.id}`;
             const tableUrl = `http://${host}/kiosk?stall=${s.id}&table=1`;
             return (
-              <div key={s.id} className="border-2 rounded-2xl p-4 flex gap-4 items-center">
-                <div className="bg-brand-100 p-2 border rounded-xl">
+              <div key={s.id} className="border-2 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row gap-3 sm:gap-4 items-start sm:items-center">
+                <div className="bg-brand-100 p-2 border rounded-xl shrink-0 mx-auto sm:mx-0">
                   <QRCodeSVG value={url} size={96} />
                 </div>
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 w-full">
                   <div className="font-bold text-sm">{s.name}</div>
                   <div className="text-xs text-brand-700/60 break-all">{url}</div>
-                  <div className="text-xs text-brand-700/60 mt-1">Table example: <span className="font-mono bg-brand-100 px-1 rounded">{tableUrl}</span></div>
+                  <div className="text-xs text-brand-700/60 mt-1">Table example: <span className="font-mono bg-brand-100 px-1 rounded break-all">{tableUrl}</span></div>
                   <div className="flex gap-2 mt-2">
-                    <button onClick={()=>{ navigator.clipboard.writeText(url); alert('Copied ' + url); }} className="text-xs border px-3 py-1.5 rounded-lg">Copy URL</button>
-                    <button onClick={()=>window.print()} className="text-xs bg-brand-600 text-brand-100 px-3 py-1.5 rounded-lg">Print QR</button>
+                    <button onClick={()=>{ navigator.clipboard.writeText(url); alert('Copied ' + url); }} className="text-xs border px-3 py-1.5 rounded-lg min-h-[36px]">Copy URL</button>
+                    <button onClick={()=>window.print()} className="text-xs bg-brand-600 text-brand-100 px-3 py-1.5 rounded-lg min-h-[36px]">Print QR</button>
                   </div>
                 </div>
               </div>
@@ -242,7 +242,7 @@ function MenuManagementTab(){
         {visibleStalls.length===0 && <div className="text-sm text-brand-700/50 py-4 text-center">No stalls — add one above (ADMIN)</div>}
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-brand-100 rounded-2xl border border-brand-300/40 p-4">
           <h4 className="font-bold">Categories — {stalls.find(s=>s.id===selectedStall)?.name || ''}</h4>
           <div className="space-y-2 mt-3 max-h-72 overflow-auto">
@@ -301,12 +301,12 @@ function MenuManagementTab(){
         </div>
       </div>
 
-      <div className="bg-brand-100 rounded-2xl border border-brand-300/40 overflow-auto">
+      <div className="bg-brand-100 rounded-2xl border border-brand-300/40 overflow-hidden">
         <div className="p-4 border-b flex items-center justify-between">
           <h4 className="font-bold">Menu Items — {menu.length} items</h4>
           <span className="text-xs bg-brand-100 px-2 py-1 rounded-full">{isAdmin ? 'ADMIN sees all in stall' : `Filtered to ${user?.stall_name}`}</span>
         </div>
-        <table className="w-full text-sm">
+        <table className="w-full text-sm min-w-[640px]">
           <thead className="bg-brand-100"><tr className="text-left"><th className="p-3">Image</th><th>Item</th><th>Category</th><th>Price</th><th>Avail</th><th></th></tr></thead>
           <tbody className="divide-y">
             {menu.map((it:any)=>(
@@ -396,7 +396,7 @@ function InventoryTab() {
   }
   return (
     <div className="space-y-4">
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {ings.map(ing=>(
           <div key={ing.id} className={`bg-brand-100 rounded-2xl border-2 p-4 ${ing.is_low?'border-brand-300 bg-brand-100/50':''}`}>
             <div className="flex justify-between items-start">
@@ -449,7 +449,7 @@ function BomTab(){
         <p className="text-xs text-brand-700/60 mt-2">Example: Classic Burger → Beef Patty ×1 pcs. Atomic deduction multiplies by order quantity. ADMIN can edit any; STALL_OWNER filtered server-side to own stall.</p>
       </div>
       <div className="bg-brand-100 rounded-2xl border border-brand-300/40 overflow-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm min-w-[640px]">
           <thead className="bg-brand-100"><tr className="text-left"><th className="p-3">Menu Item</th><th>Ingredient</th><th>Qty / serving</th><th></th></tr></thead>
           <tbody className="divide-y">{boms.map((b:any)=><tr key={b.id}><td className="p-3 font-medium">{b.menu_item_name}</td><td>{b.ingredient_name}</td><td>{b.quantity_required}</td><td><button onClick={()=>del(b.id)} className="text-brand-700 p-1"><Trash2 size={14}/></button></td></tr>)}</tbody>
         </table>
@@ -478,7 +478,7 @@ function AuditTab(){
         <div className="flex gap-3 mt-3"><input type="date" value={date} onChange={e=>setDate(e.target.value)} className="border rounded-xl px-3 py-2 text-sm" /><button onClick={submit} className="bg-brand-600 text-brand-100 px-6 py-2 rounded-xl font-semibold">Submit Audit</button></div>
       </div>
       <div className="bg-brand-100 rounded-2xl border border-brand-300/40 overflow-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm min-w-[640px]">
           <thead className="bg-brand-100"><tr><th className="p-3 text-left">Ingredient</th><th>System Expected</th><th>Physical Count</th><th>Unit</th></tr></thead>
           <tbody className="divide-y">{ings.map((ing:any)=><tr key={ing.id}><td className="p-3 font-medium">{ing.name}</td><td className="p-3">{ing.current_stock}</td><td className="p-3"><input value={counts[ing.id]||''} onChange={e=>setCounts({...counts, [ing.id]:e.target.value})} placeholder="actual" type="number" className="border rounded-xl px-3 py-1.5 w-28" /></td><td>{ing.unit}</td></tr>)}</tbody>
         </table>
@@ -486,7 +486,7 @@ function AuditTab(){
       <div className="bg-brand-100 rounded-2xl border border-brand-300/40">
         <div className="p-4 font-bold border-b">Audits for {date}</div>
         {audits.length===0? <div className="p-6 text-center text-brand-700/50 text-sm">No audits yet</div> :
-          <table className="w-full text-sm"><thead className="bg-brand-100"><tr><th className="p-3 text-left">Ingredient</th><th>Expected</th><th>Actual</th><th>Variance</th></tr></thead><tbody className="divide-y">{audits.map((a:any)=><tr key={a.id}><td className="p-3">{a.ingredient_name}</td><td>{a.system_expected_stock}</td><td>{a.physical_actual_stock}</td><td className={a.variance===0?'text-brand-500': a.variance<0?'text-brand-700':'text-brand-500'}>{a.variance>0?'+':''}{a.variance}</td></tr>)}</tbody></table>}
+          <table className="w-full text-sm min-w-[640px]"><thead className="bg-brand-100"><tr><th className="p-3 text-left">Ingredient</th><th>Expected</th><th>Actual</th><th>Variance</th></tr></thead><tbody className="divide-y">{audits.map((a:any)=><tr key={a.id}><td className="p-3">{a.ingredient_name}</td><td>{a.system_expected_stock}</td><td>{a.physical_actual_stock}</td><td className={a.variance===0?'text-brand-500': a.variance<0?'text-brand-700':'text-brand-500'}>{a.variance>0?'+':''}{a.variance}</td></tr>)}</tbody></table>}
       </div>
     </div>
   );
@@ -509,12 +509,12 @@ function AnalyticsTab(){
         <input type="date" value={date} onChange={e=>setDate(e.target.value)} className="border rounded-xl px-3 py-2 text-sm" />
         <button onClick={()=>{ load(); api.get<any>(`/api/orders/analytics/daily?date=${date}`).then(setDailyData).catch(()=>{}); }} className="border bg-brand-100 px-4 py-2 rounded-xl text-sm font-medium">Refresh</button>
       </div>
-      <div className="grid md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <div className="bg-brand-100 rounded-2xl border border-brand-300/40 p-5"><div className="text-sm text-brand-700/60">Revenue ({date})</div><div className="text-2xl font-black">₱{Number(summary.revenue||summary.orders||0).toFixed?.(2) || '0.00'}</div><div className="text-xs text-brand-700/60">{summary.orders || summary.orderCount || 0} orders</div></div>
         <div className="bg-brand-100 rounded-2xl border border-brand-300/40 p-5"><div className="text-sm text-brand-700/60">Top Item</div><div className="text-lg font-bold">{topItems?.[0]?.name || '—'}</div><div className="text-xs text-brand-700/60">{topItems?.[0]?.qty || 0} sold</div></div>
         <div className="bg-brand-100 rounded-2xl border border-brand-300/40 p-5"><div className="text-sm text-brand-700/60">Hourly Peak</div><div className="text-lg font-bold">{hourly?.length? `${hourly.reduce((m:any,c:any)=> c.orders>m.orders?c:m, hourly[0]).hour}:00`:'—'}</div><div className="text-xs text-brand-700/60">{hourly?.length||0} active hours</div></div>
       </div>
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-brand-100 rounded-2xl border border-brand-300/40 p-5">
           <h4 className="font-bold">Top 5 Items</h4>
           <div className="mt-3 space-y-2">{(topItems||[]).map((t:any)=><div key={t.name} className="flex justify-between text-sm border rounded-xl px-3 py-2"><span>{t.name}</span><span className="font-bold">{t.qty} × ₱{t.revenue}</span></div>)}{(!topItems || topItems.length===0) && <div className="text-sm text-brand-700/50">No sales yet</div>}</div>
@@ -544,7 +544,7 @@ function UsersTab(){
     <div className="space-y-4">
       <div className="bg-brand-100 rounded-2xl border border-brand-300/40 p-4">
         <h3 className="font-bold flex items-center gap-2"><Users size={16}/> Create User — ADMIN only</h3>
-        <div className="grid md:grid-cols-5 gap-2 mt-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 mt-3">
           <input value={form.username} onChange={e=>setForm({...form, username:e.target.value})} placeholder="username" className="border rounded-xl px-3 py-2 text-sm" />
           <input value={form.pin} onChange={e=>setForm({...form, pin:e.target.value})} placeholder="PIN (e.g. grill123)" className="border rounded-xl px-3 py-2 text-sm" />
           <input value={form.displayName} onChange={e=>setForm({...form, displayName:e.target.value})} placeholder="Display name" className="border rounded-xl px-3 py-2 text-sm" />
@@ -554,7 +554,7 @@ function UsersTab(){
         <button onClick={create} className="mt-3 bg-brand-600 text-brand-100 px-6 py-2.5 rounded-xl font-semibold">Create User</button>
       </div>
       <div className="bg-brand-100 rounded-2xl border border-brand-300/40 overflow-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm min-w-[640px]">
           <thead className="bg-brand-100"><tr><th className="p-3 text-left">User</th><th>Role</th><th>Stall</th><th>Active</th><th></th></tr></thead>
           <tbody className="divide-y">
             {users.map((u:any)=>(

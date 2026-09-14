@@ -9,27 +9,27 @@ import { AuthProvider } from './lib/auth';
 
 function Home() {
   return (
-    <div className="space-y-6">
-      <div className="bg-gradient-to-br from-brand-500 to-brand-700 rounded-3xl p-8 text-brand-100 shadow-lg border border-brand-600/20">
-        <h1 className="text-3xl font-black">Welcome to CampusBITE</h1>
-        <p className="mt-2 text-brand-100/90 max-w-2xl">Offline-first canteen OS. Your Android phone is the server via Wi-Fi Hotspot — no internet needed. Choose your workspace:</p>
-        <div className="grid md:grid-cols-4 gap-3 mt-6">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="bg-gradient-to-br from-brand-500 to-brand-700 rounded-2xl sm:rounded-3xl p-5 sm:p-8 text-brand-100 shadow-lg border border-brand-600/20">
+        <h1 className="text-2xl sm:text-3xl font-black leading-tight">Welcome to CampusBITE</h1>
+        <p className="mt-2 text-sm sm:text-base text-brand-100/90 max-w-2xl">Offline-first canteen OS. Your Android phone is the server via Wi-Fi Hotspot — no internet needed. Choose your workspace:</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
           {[
             { to: '/kiosk', title: 'Student Kiosk', desc: 'Browse menu, cart & pay at counter' },
             { to: '/pos', title: 'Stall POS', desc: 'Lookup by code & confirm cash' },
             { to: '/kds', title: 'Kitchen Display', desc: 'Live order board with chimes' },
             { to: '/admin', title: 'Inventory Admin', desc: 'Stock, BOM, audits & analytics' },
           ].map(c=>(
-            <a key={c.to} href={c.to} className="bg-brand-100 text-brand-700 rounded-2xl p-4 hover:scale-[1.02] transition border border-brand-100 shadow-sm">
-              <div className="font-bold">{c.title}</div><div className="text-xs text-brand-700/60 mt-1">{c.desc}</div>
+            <a key={c.to} href={c.to} className="bg-brand-100 text-brand-700 rounded-2xl p-4 hover:scale-[1.02] active:scale-[0.98] transition border border-brand-100 shadow-sm min-h-[88px] flex flex-col justify-center">
+              <div className="font-bold text-sm sm:text-base">{c.title}</div><div className="text-xs text-brand-700/60 mt-1 line-clamp-2">{c.desc}</div>
             </a>
           ))}
         </div>
       </div>
-      <div className="grid md:grid-cols-3 gap-4 text-sm">
-        <div className="bg-brand-100 rounded-2xl border border-brand-300/40 p-5"><div className="font-bold text-brand-700">How it works</div><p className="text-brand-700/60 mt-2">Phone hotspot → Node.js + SQLite + WebSockets on phone → browsers connect to http://&lt;hotspot-ip&gt;:3000</p></div>
-        <div className="bg-brand-100 rounded-2xl border border-brand-300/40 p-5"><div className="font-bold text-brand-700">Atomic BOM</div><p className="text-brand-700/60 mt-2">Every CONFIRMED order deducts recipe ingredients in one SQLite TRANSACTION. Rolls back on cancel.</p></div>
-        <div className="bg-brand-100 rounded-2xl border border-brand-300/40 p-5"><div className="font-bold text-brand-700">Real-time</div><p className="text-brand-700/60 mt-2">WebSocket rooms: <code className="bg-brand-100 px-1 py-0.5 rounded text-brand-700">kds</code>, <code className="bg-brand-100 px-1 py-0.5 rounded text-brand-700">pos</code>, <code className="bg-brand-100 px-1 py-0.5 rounded text-brand-700">order:ID</code>. Audio chime when new ticket arrives in kitchen.</p></div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 text-sm">
+        <div className="bg-brand-100 rounded-2xl border border-brand-300/40 p-4 sm:p-5"><div className="font-bold text-brand-700">How it works</div><p className="text-brand-700/60 mt-2 text-xs sm:text-sm">Phone hotspot → Node.js + SQLite + WebSockets on phone → browsers connect to http://&lt;hotspot-ip&gt;:3000</p></div>
+        <div className="bg-brand-100 rounded-2xl border border-brand-300/40 p-4 sm:p-5"><div className="font-bold text-brand-700">Atomic BOM</div><p className="text-brand-700/60 mt-2 text-xs sm:text-sm">Every CONFIRMED order deducts recipe ingredients in one SQLite TRANSACTION. Rolls back on cancel.</p></div>
+        <div className="bg-brand-100 rounded-2xl border border-brand-300/40 p-4 sm:p-5"><div className="font-bold text-brand-700">Real-time</div><p className="text-brand-700/60 mt-2 text-xs sm:text-sm">WebSocket rooms: <code className="bg-brand-100 px-1 py-0.5 rounded text-brand-700">kds</code>, <code className="bg-brand-100 px-1 py-0.5 rounded text-brand-700">pos</code>, <code className="bg-brand-100 px-1 py-0.5 rounded text-brand-700">order:ID</code>. Audio chime when new ticket arrives in kitchen.</p></div>
       </div>
       <div className="bg-brand-100 rounded-2xl border border-brand-300/40 p-5">
         <h3 className="font-bold text-brand-700">Quick Start (Learning)</h3>

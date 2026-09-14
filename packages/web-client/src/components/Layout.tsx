@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ShoppingBag, Store, ChefHat, Boxes, Wifi, Activity, LogIn, LogOut, Shield } from 'lucide-react';
+import { ShoppingBag, Store, ChefHat, Boxes, Wifi, Activity, LogIn, LogOut, Shield, Menu, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
@@ -16,6 +16,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [health, setHealth] = useState<any>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     api.get<any>('/api/health').then(setHealth).catch(() => {});
@@ -23,51 +24,87 @@ export function Layout({ children }: { children: React.ReactNode }) {
     return () => clearInterval(t);
   }, []);
 
+  // Close mobile menu on route change
+  useEffect(() => { setMenuOpen(false); }, [loc.pathname]);
+
   return (
     <div className="min-h-screen flex flex-col bg-brand-100">
-      <header className="sticky top-0 z-40 bg-brand-100 border-b border-brand-300/40 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-          <Link to="/" className="flex items-center gap-3">
-            <img src="/CampusBITE_logo.png" alt="CampusBITE logo" className="w-10 h-10 object-contain shrink-0" />
-            <div>
-              <div className="font-black leading-none text-brand-700">CampusBITE</div>
-              <div className="text-xs text-brand-700/60 -mt-0.5">Offline Canteen OS</div>
+      <header className="sticky top-0 z-40 bg-brand-100 border-b border-brand-300/40 shadow-sm header-safe">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between gap-2 sm:gap-4">
+          <Link to="/" className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <img src="/CampusBITE_logo.png" alt="CampusBITE logo" className="w-9 h-9 sm:w-10 sm:h-10 object-contain shrink-0" />
+            <div className="min-w-0">
+              <div className="font-black leading-none text-brand-700 text-sm sm:text-base truncate">CampusBITE</div>
+              <div className="text-[11px] sm:text-xs text-brand-700/60 -mt-0.5 hidden sm:block">Offline Canteen OS</div>
             </div>
           </Link>
-          <nav className="flex gap-1 md:gap-2 items-center">
+          {/* Desktop nav */}
+          <nav className="hidden lg:flex gap-1 xl:gap-2 items-center">
             {nav.map(n => {
               const active = loc.pathname.startsWith(n.to);
               const Icon = n.icon;
               return (
                 <Link key={n.to} to={n.to}
-                  className={`px-3 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition border ${active ? 'bg-brand-600 text-brand-100 border-brand-600 shadow-sm' : 'bg-brand-100 hover:bg-brand-300 text-brand-700 border-brand-300/40'}`}>
-                  <Icon size={16} /> <span className="hidden sm:inline">{n.label}</span>
+                  className={`px-3 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition border min-h-[44px] ${active ? 'bg-brand-600 text-brand-100 border-brand-600 shadow-sm' : 'bg-brand-100 hover:bg-brand-300 text-brand-700 border-brand-300/40'}`}>
+                  <Icon size={16} /> <span>{n.label}</span>
                 </Link>
               );
             })}
             {user ? (
               <div className="flex items-center gap-2 ml-2 pl-2 border-l border-brand-300/40">
-                <div className="hidden md:block text-right">
+                <div className="hidden xl:block text-right">
                   <div className="text-xs font-bold leading-none flex items-center gap-1 text-brand-700"><Shield size={12} className={user.role==='ADMIN'?'text-brand-700':'text-brand-500'}/> {user.display_name}</div>
                   <div className="text-[10px] text-brand-700/60">{user.role}{user.stall_name ? ` • ${user.stall_name}` : ''}</div>
                 </div>
-                <button onClick={()=>{ logout(); navigate('/login'); }} className="flex items-center gap-1.5 bg-brand-100 hover:bg-brand-300 border border-brand-300/40 rounded-xl px-3 py-2 text-sm font-medium text-brand-700"><LogOut size={14}/> <span className="hidden sm:inline">Logout</span></button>
+                <button onClick={()=>{ logout(); navigate('/login'); }} className="flex items-center gap-1.5 bg-brand-100 hover:bg-brand-300 border border-brand-300/40 rounded-xl px-3 py-2.5 text-sm font-medium text-brand-700 min-h-[44px]"><LogOut size={14}/> Logout</button>
               </div>
             ) : (
-              <Link to="/login" className={`ml-2 px-3 py-2 rounded-xl text-sm font-medium flex items-center gap-2 border transition ${loc.pathname==='/login'?'bg-brand-700 text-brand-100 border-brand-700':'bg-brand-600 text-brand-100 hover:bg-brand-300 border-brand-600 hover:border-brand-300 shadow-sm'}`}><LogIn size={16}/> Login</Link>
+              <Link to="/login" className={`ml-2 px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 border transition min-h-[44px] ${loc.pathname==='/login'?'bg-brand-700 text-brand-100 border-brand-700':'bg-brand-600 text-brand-100 hover:bg-brand-300 border-brand-600 hover:border-brand-300 shadow-sm'}`}><LogIn size={16}/> Login</Link>
             )}
           </nav>
+          {/* Mobile hamburger */}
+          <button onClick={()=>setMenuOpen(!menuOpen)} className="lg:hidden p-2.5 rounded-xl border border-brand-300/40 bg-brand-100 hover:bg-brand-300 text-brand-700 min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Menu">
+            {menuOpen ? <X size={20}/> : <Menu size={20}/>}
+          </button>
         </div>
+        {/* Mobile drawer */}
+        {menuOpen && (
+          <div className="lg:hidden border-t border-brand-300/40 bg-brand-100 px-3 py-3 space-y-2 shadow-lg">
+            <div className="grid grid-cols-2 gap-2">
+              {nav.map(n => {
+                const active = loc.pathname.startsWith(n.to);
+                const Icon = n.icon;
+                return (
+                  <Link key={n.to} to={n.to} onClick={()=>setMenuOpen(false)}
+                    className={`px-3 py-3 rounded-xl text-sm font-medium flex items-center gap-2 border min-h-[44px] ${active ? 'bg-brand-600 text-brand-100 border-brand-600' : 'bg-brand-100 text-brand-700 border-brand-300/40'}`}>
+                    <Icon size={16} /> {n.label}
+                  </Link>
+                );
+              })}
+            </div>
+            {user ? (
+              <div className="flex items-center justify-between gap-2 pt-2 border-t border-brand-300/40">
+                <div className="text-xs">
+                  <div className="font-bold text-brand-700 flex items-center gap-1"><Shield size={12}/>{user.display_name}</div>
+                  <div className="text-brand-700/60">{user.role}{user.stall_name?` • ${user.stall_name}`:''}</div>
+                </div>
+                <button onClick={()=>{ logout(); navigate('/login'); setMenuOpen(false); }} className="flex items-center gap-1.5 bg-brand-100 border border-brand-300/40 rounded-xl px-4 py-2.5 text-sm font-medium text-brand-700"><LogOut size={14}/> Logout</button>
+              </div>
+            ) : (
+              <Link to="/login" onClick={()=>setMenuOpen(false)} className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-medium border min-h-[44px] ${loc.pathname==='/login'?'bg-brand-700 text-brand-100':'bg-brand-600 text-brand-100 border-brand-600'}`}><LogIn size={16}/> Login</Link>
+            )}
+          </div>
+        )}
         {health && (
-          <div className="bg-brand-700 text-brand-100 text-xs px-4 py-1.5 flex items-center gap-4 overflow-auto">
-            <span className="flex items-center gap-1.5"><Wifi size={12} className="text-brand-100" /> {health.ips?.[0] || 'localhost'}:{health.port}</span>
-            <span className="flex items-center gap-1.5"><Activity size={12} className="text-brand-300" /> WS {health.ips?.[0] || 'localhost'}:{health.port}/ws</span>
-            <span className="text-brand-100/60 ml-auto hidden md:inline">Connect all devices to the same Wi-Fi hotspot and open http://{health.ips?.[0] || 'localhost'}:{health.port}</span>
+          <div className="bg-brand-700 text-brand-100 text-[11px] sm:text-xs px-3 sm:px-4 py-1.5 flex items-center gap-3 sm:gap-4 overflow-x-auto scrollbar-none">
+            <span className="flex items-center gap-1.5 whitespace-nowrap"><Wifi size={12} className="text-brand-100" /> {health.ips?.[0] || 'localhost'}:{health.port}</span>
+            <span className="flex items-center gap-1.5 whitespace-nowrap"><Activity size={12} className="text-brand-300" /> WS {health.ips?.[0] || 'localhost'}:{health.port}/ws</span>
+            <span className="text-brand-100/60 ml-auto hidden lg:inline whitespace-nowrap">Connect all devices to same Wi-Fi hotspot → http://{health.ips?.[0] || 'localhost'}:{health.port}</span>
           </div>
         )}
       </header>
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-6">{children}</main>
-      <footer className="text-center text-xs text-brand-700/50 py-6 border-t border-brand-300/30">CampusBITE • Offline-first • SQLite + WebSockets • Foreground Service on Android</footer>
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-4 py-4 sm:py-6 pb-safe">{children}</main>
+      <footer className="text-center text-[11px] sm:text-xs text-brand-700/50 py-4 sm:py-6 border-t border-brand-300/30 px-3">CampusBITE • Offline-first • SQLite + WebSockets • Foreground Service on Android</footer>
     </div>
   );
 }

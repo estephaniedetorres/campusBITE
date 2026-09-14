@@ -14,11 +14,11 @@ export default function PosPage() {
 
   if (!user) {
     return (
-      <div className="max-w-lg mx-auto bg-brand-100 rounded-2xl border border-brand-300/40 p-8 text-center shadow-sm">
-        <Shield size={32} className="mx-auto text-brand-300" />
-        <h2 className="font-bold text-lg mt-3 text-brand-700">POS — Staff only</h2>
-        <p className="text-sm text-brand-700/60 mt-2">Kiosk is the only public page. POS cashier requires login. <br/>STALL_OWNER sees only own stall orders, ADMIN sees all.</p>
-        <Link to="/login" className="inline-flex items-center gap-2 mt-4 bg-brand-600 hover:bg-brand-300 text-brand-100 px-6 py-3 rounded-xl font-semibold shadow-sm"><LogIn size={16}/> Login to POS</Link>
+      <div className="max-w-lg mx-auto bg-brand-100 rounded-2xl border border-brand-300/40 p-6 sm:p-8 text-center shadow-sm">
+        <Shield size={28} className="mx-auto text-brand-300 sm:w-8 sm:h-8" />
+        <h2 className="font-bold text-base sm:text-lg mt-3 text-brand-700">POS — Staff only</h2>
+        <p className="text-xs sm:text-sm text-brand-700/60 mt-2">Kiosk is the only public page. POS cashier requires login. <br/>STALL_OWNER sees only own stall orders, ADMIN sees all.</p>
+        <Link to="/login" className="inline-flex items-center justify-center gap-2 mt-4 bg-brand-600 hover:bg-brand-300 text-brand-100 px-6 py-3 rounded-xl font-semibold shadow-sm min-h-[44px] w-full sm:w-auto"><LogIn size={16}/> Login to POS</Link>
         <div className="mt-4 text-xs bg-brand-100/60 border border-brand-300/30 rounded-xl p-3 text-left text-brand-700">
           <div>grill / grill123 → Campus Grill POS</div>
           <div>brew / brew123 → Brew & Bites POS</div>
@@ -69,20 +69,20 @@ export default function PosPage() {
   return (
     <div className="space-y-4">
       <div className="bg-brand-100 rounded-2xl border border-brand-300/40 p-3 flex items-center gap-3 text-sm shadow-sm">
-        <div className="w-8 h-8 rounded-lg bg-brand-600 text-brand-100 flex items-center justify-center"><Banknote size={14}/></div>
-        <div><div className="font-bold text-brand-700">POS — {user.role==='ADMIN' ? 'All stalls' : user.stall_name}</div><div className="text-xs text-brand-700/60">{user.display_name} • {user.role} {user.role==='STALL_OWNER' ? `• Filtered to ${user.stall_id}` : ''}</div></div>
-        <div className="ml-auto text-xs bg-brand-100/60 border border-brand-300/40 px-3 py-1.5 rounded-lg hidden md:block text-brand-700">Staff only — Kiosk is the only public page</div>
+        <div className="w-8 h-8 rounded-lg bg-brand-600 text-brand-100 flex items-center justify-center shrink-0"><Banknote size={14}/></div>
+        <div className="min-w-0 flex-1"><div className="font-bold text-brand-700 text-sm sm:text-base truncate">POS — {user.role==='ADMIN' ? 'All stalls' : user.stall_name}</div><div className="text-[11px] sm:text-xs text-brand-700/60 truncate">{user.display_name} • {user.role} {user.role==='STALL_OWNER' ? `• ${user.stall_id}` : ''}</div></div>
+        <div className="ml-auto text-xs bg-brand-100/60 border border-brand-300/40 px-3 py-1.5 rounded-lg hidden lg:block text-brand-700 shrink-0">Staff only</div>
       </div>
-    <div className="grid lg:grid-cols-[420px_1fr] gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] xl:grid-cols-[420px_1fr] gap-4 sm:gap-6">
       <div className="space-y-4">
-        <div className="bg-brand-100 rounded-2xl border border-brand-300/40 p-5 shadow-sm">
-          <h2 className="font-bold flex items-center gap-2 text-brand-700"><Banknote size={18} /> POS — Cashier</h2>
-          <p className="text-sm text-brand-700/60">Enter 4-char pickup code shown on student Kiosk.</p>
-          <div className="flex gap-2 mt-4">
+        <div className="bg-brand-100 rounded-2xl border border-brand-300/40 p-4 sm:p-5 shadow-sm">
+          <h2 className="font-bold flex items-center gap-2 text-brand-700 text-base sm:text-lg"><Banknote size={18} /> POS — Cashier</h2>
+          <p className="text-xs sm:text-sm text-brand-700/60">Enter 4-char pickup code shown on student Kiosk.</p>
+          <div className="flex flex-col sm:flex-row gap-2 mt-4">
             <input value={code} onChange={e=>setCode(e.target.value.toUpperCase())} onKeyDown={e=>e.key==='Enter'&&lookup()}
               placeholder="e.g. A3X9" maxLength={4}
-              className="flex-1 tracking-[0.3em] font-mono text-xl font-black uppercase text-center border-2 border-brand-600 rounded-xl px-4 py-3 focus:outline-none focus:border-brand-600 text-brand-700 placeholder:text-brand-300" />
-            <button onClick={lookup} className="bg-brand-600 hover:bg-brand-300 text-brand-100 rounded-xl px-5 flex items-center gap-2 shadow-sm"><Search size={18} /> Lookup</button>
+              className="flex-1 tracking-[0.3em] font-mono text-lg sm:text-xl font-black uppercase text-center border-2 border-brand-600 rounded-xl px-4 py-3 focus:outline-none focus:border-brand-600 text-brand-700 placeholder:text-brand-300 min-h-[48px]" />
+            <button onClick={lookup} className="bg-brand-600 hover:bg-brand-300 text-brand-100 rounded-xl px-5 flex items-center justify-center gap-2 shadow-sm min-h-[48px] sm:min-h-[44px]"><Search size={18} /> Lookup</button>
           </div>
           {error && <div className="mt-3 text-sm text-brand-700 bg-brand-100 border border-brand-300 rounded-xl px-3 py-2">{error}</div>}
           {result && (
@@ -96,13 +96,13 @@ export default function PosPage() {
               </div>
               <div className="flex justify-between font-black text-lg border-t mt-3 pt-3"><span>Total</span><span>₱{result.order.total_amount}</span></div>
 
-              <div className="grid grid-cols-2 gap-2 mt-4">
-                {result.order.status==='PENDING_PAYMENT' && <button onClick={()=>updateStatus(result.order.id,'CONFIRMED')} className="col-span-2 bg-brand-600 hover:bg-brand-300 text-brand-100 font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-sm"><Banknote size={18}/> Confirm Cash Payment</button>}
-                {result.order.status==='CONFIRMED' && <button onClick={()=>updateStatus(result.order.id,'PREPARING')} className="bg-brand-600 hover:bg-brand-300 text-brand-100 font-bold py-3 rounded-xl shadow-sm">Start Preparing</button>}
-                {result.order.status==='PREPARING' && <button onClick={()=>updateStatus(result.order.id,'READY')} className="bg-brand-600 hover:bg-brand-300 text-brand-100 font-bold py-3 rounded-xl shadow-sm">Mark Ready</button>}
-                {result.order.status==='READY' && <button onClick={()=>updateStatus(result.order.id,'COMPLETED')} className="bg-brand-600 hover:bg-brand-300 text-brand-100 font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-sm"><CheckCircle size={16}/> Completed / Picked up</button>}
-                {['PENDING_PAYMENT','CONFIRMED','PREPARING','READY'].includes(result.order.status) && <button onClick={()=>updateStatus(result.order.id,'CANCELLED')} className="border border-brand-300 text-brand-700 font-semibold py-3 rounded-xl hover:bg-brand-300">Cancel</button>}
-                {result.order.status!=='PENDING_PAYMENT' && <button onClick={()=>window.print()} className="border border-brand-300/40 bg-brand-100 hover:bg-brand-300 py-3 rounded-xl flex items-center justify-center gap-2 text-brand-700"><Printer size={16}/> Print Receipt</button>}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
+                {result.order.status==='PENDING_PAYMENT' && <button onClick={()=>updateStatus(result.order.id,'CONFIRMED')} className="col-span-1 sm:col-span-2 bg-brand-600 hover:bg-brand-300 text-brand-100 font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-sm min-h-[44px]"><Banknote size={18}/> Confirm Cash Payment</button>}
+                {result.order.status==='CONFIRMED' && <button onClick={()=>updateStatus(result.order.id,'PREPARING')} className="bg-brand-600 hover:bg-brand-300 text-brand-100 font-bold py-3 rounded-xl shadow-sm min-h-[44px]">Start Preparing</button>}
+                {result.order.status==='PREPARING' && <button onClick={()=>updateStatus(result.order.id,'READY')} className="bg-brand-600 hover:bg-brand-300 text-brand-100 font-bold py-3 rounded-xl shadow-sm min-h-[44px]">Mark Ready</button>}
+                {result.order.status==='READY' && <button onClick={()=>updateStatus(result.order.id,'COMPLETED')} className="bg-brand-600 hover:bg-brand-300 text-brand-100 font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-sm min-h-[44px]"><CheckCircle size={16}/> Completed / Picked up</button>}
+                {['PENDING_PAYMENT','CONFIRMED','PREPARING','READY'].includes(result.order.status) && <button onClick={()=>updateStatus(result.order.id,'CANCELLED')} className="border border-brand-300 text-brand-700 font-semibold py-3 rounded-xl hover:bg-brand-300 min-h-[44px]">Cancel</button>}
+                {result.order.status!=='PENDING_PAYMENT' && <button onClick={()=>window.print()} className="border border-brand-300/40 bg-brand-100 hover:bg-brand-300 py-3 rounded-xl flex items-center justify-center gap-2 text-brand-700 min-h-[44px]"><Printer size={16}/> Print Receipt</button>}
               </div>
             </div>
           )}

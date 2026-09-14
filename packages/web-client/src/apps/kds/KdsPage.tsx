@@ -78,13 +78,13 @@ export default function KdsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-brand-600 text-brand-100 flex items-center justify-center shadow-sm"><ChefHat size={18} /></div>
-        <div><h2 className="font-black text-lg leading-none text-brand-700">Kitchen Display System</h2><p className="text-xs text-brand-700/60">Live Kanban • {user.role==='ADMIN' ? 'All stalls' : user.stall_name} • Auto-refresh + WebSocket</p></div>
-        <button onClick={()=>setMuted(v=>!v)} className={`ml-auto flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium shadow-sm ${muted?'bg-brand-100 border-brand-300/40 text-brand-700':'bg-brand-100 border-brand-300 text-brand-700'}`}>{muted? <VolumeX size={16}/> : <Volume2 size={16}/> } {muted?'Muted':'Sound On'}</button>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-brand-600 text-brand-100 flex items-center justify-center shadow-sm shrink-0"><ChefHat size={18} /></div>
+        <div className="flex-1 min-w-0"><h2 className="font-black text-base sm:text-lg leading-none text-brand-700">Kitchen Display System</h2><p className="text-[11px] sm:text-xs text-brand-700/60 truncate">Live Kanban • {user.role==='ADMIN' ? 'All stalls' : user.stall_name} • Auto-refresh + WS</p></div>
+        <button onClick={()=>setMuted(v=>!v)} className={`ml-auto flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl border text-xs sm:text-sm font-medium shadow-sm min-h-[44px] ${muted?'bg-brand-100 border-brand-300/40 text-brand-700':'bg-brand-100 border-brand-300 text-brand-700'}`}>{muted? <VolumeX size={14} className="sm:w-4 sm:h-4"/> : <Volume2 size={14} className="sm:w-4 sm:h-4"/> } <span className="hidden sm:inline">{muted?'Muted':'Sound On'}</span><span className="sm:hidden">{muted?'Off':'On'}</span></button>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {columns.map(col => (
           <div key={col.key} className={`rounded-2xl border-2 ${col.color} min-h-[50vh]`}>
             <div className="p-3 border-b border-inherit flex items-center justify-between">
