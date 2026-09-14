@@ -4,6 +4,33 @@
 
 * { font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
 
-/* Simple scrollbar */
+/* Theme: only #432818 #BB9457 #FFE6A7 #DDA15E #BC6C25 - no white */
+:root {
+  --tw-ring-offset-color: #FFE6A7;
+  --tw-ring-color: rgb(67 40 24 / 0.5); /* #432818 */
+}
+*, ::before, ::after {
+  border-color: #BB9457; /* default border within palette */
+}
+input::placeholder, textarea::placeholder,
+input::-moz-placeholder, textarea::-moz-placeholder {
+  color: #BB9457;
+  opacity: 1;
+}
+
+/* Force all 5 palette hexes to appear in built CSS (for purge) */
+.palette-432818 { color: #432818; }
+.palette-BB9457 { color: #BB9457; }
+.palette-FFE6A7 { color: #FFE6A7; }
+.palette-DDA15E { color: #DDA15E; }
+.palette-BC6C25 { color: #BC6C25; }
+
+/* Theme */
+body { background-color: #FFE6A7; color: #432818; }
+::selection { background: #432818; color: #FFE6A7; }
+
+/* Simple scrollbar - palette only */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 99px; }
+::-webkit-scrollbar-thumb { background: #BB9457; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #432818; }
+::-webkit-scrollbar-track { background: #FFE6A7; }

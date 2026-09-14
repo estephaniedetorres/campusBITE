@@ -10,9 +10,13 @@ function upsertIngredient(id, name, unit, stock, threshold, cost) {
     db.prepare(`INSERT OR IGNORE INTO ingredients (id, name, unit, current_stock, min_threshold, cost_per_unit) VALUES (?,?,?,?,?,?)`)
         .run(id, name, unit, stock, threshold, cost);
 }
-function upsertMenuItem(id, stallId, catId, name, price, desc) {
-    db.prepare(`INSERT OR IGNORE INTO menu_items (id, stall_id, category_id, name, price, description) VALUES (?,?,?,?,?,?)`)
-        .run(id, stallId, catId, name, price, desc);
+function upsertMenuItem(id, stallId, catId, name, price, desc, imageUrl) {
+    db.prepare(`INSERT OR IGNORE INTO menu_items (id, stall_id, category_id, name, price, description, image_url) VALUES (?,?,?,?,?,?,?)`)
+        .run(id, stallId, catId, name, price, desc, imageUrl || null);
+    // Backfill image for existing rows created before image_url support
+    if (imageUrl) {
+        db.prepare(`UPDATE menu_items SET image_url=? WHERE id=? AND (image_url IS NULL OR image_url='')`).run(imageUrl, id);
+    }
 }
 function upsertBom(menuItemId, ingredientId, qty) {
     db.prepare(`INSERT OR IGNORE INTO recipe_bom (id, menu_item_id, ingredient_id, quantity_required) VALUES (?,?,?,?)`)
@@ -44,13 +48,13 @@ upsertIngredient('ing-coffee-beans', 'Coffee Beans', 'g', 2000, 300, 0.5);
 upsertIngredient('ing-milk', 'Fresh Milk', 'ml', 5000, 1000, 0.03);
 upsertIngredient('ing-flour', 'Flour', 'g', 8000, 1500, 0.04);
 upsertIngredient('ing-sugar', 'Sugar', 'g', 5000, 1000, 0.02);
-// Menu Items
-upsertMenuItem('item-burger-classic', stall1, catBurgers, 'Classic Burger', 89, '1 patty, cheese, lettuce, sauce');
-upsertMenuItem('item-burger-double', stall1, catBurgers, 'Double Cheeseburger', 139, '2 patties, double cheese');
-upsertMenuItem('item-rice-chicken', stall1, catRice, 'Chicken Rice Meal', 99, '1 fried chicken + 250g rice');
-upsertMenuItem('item-coffee-latte', stall2, catDrinks, 'Iced Latte', 65, 'Espresso + milk');
-upsertMenuItem('item-milk-tea', stall2, catDrinks, 'Milk Tea', 55, 'Classic milk tea');
-upsertMenuItem('item-croissant', stall2, catPastries, 'Butter Croissant', 45, 'Freshly baked');
+// Menu Items — with real food photos (not graphic icon) for Kiosk
+upsertMenuItem('item-burger-classic', stall1, catBurgers, 'Classic Burger', 89, '1 patty, cheese, lettuce, sauce', 'https://images.unsplash.com/photo-1568909344668-6f14a07b56a0?w=500&auto=format&fit=crop&q=60');
+upsertMenuItem('item-burger-double', stall1, catBurgers, 'Double Cheeseburger', 139, '2 patties, double cheese', 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=500&auto=format&fit=crop&q=60');
+upsertMenuItem('item-rice-chicken', stall1, catRice, 'Chicken Rice Meal', 99, '1 fried chicken + 250g rice', 'https://images.unsplash.com/photo-1604908177223-81e336fca6a2?w=500&auto=format&fit=crop&q=60');
+upsertMenuItem('item-coffee-latte', stall2, catDrinks, 'Iced Latte', 65, 'Espresso + milk', 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=500&auto=format&fit=crop&q=60');
+upsertMenuItem('item-milk-tea', stall2, catDrinks, 'Milk Tea', 55, 'Classic milk tea', 'https://images.unsplash.com/photo-1558160074-4d7d8bdf4256?w=500&auto=format&fit=crop&q=60');
+upsertMenuItem('item-croissant', stall2, catPastries, 'Butter Croissant', 45, 'Freshly baked', 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=500&auto=format&fit=crop&q=60');
 // BOM Recipes
 // Classic Burger: 1 bun, 1 patty, 1 cheese, 30g lettuce, 20g sauce
 upsertBom('item-burger-classic', 'ing-bun', 1);
