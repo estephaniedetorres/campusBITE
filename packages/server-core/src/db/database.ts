@@ -112,6 +112,65 @@ if (!schema) {
 }
 rawDb.exec(schema);
 
+// --- MIGRATION: image_url column added after initial schema (Termux old DBs) ---
+try {
+  // Check if column exists by pragma table_info
+  const cols: any[] = rawDb.prepare(`PRAGMA table_info(menu_items)`).all();
+  const hasImageUrl = cols.some((c: any) => c.name === 'image_url');
+  if (!hasImageUrl) {
+    console.log('[DB] Migrating: adding menu_items.image_url');
+    rawDb.exec(`ALTER TABLE menu_items ADD COLUMN image_url TEXT`);
+    console.log('[DB] Migration done');
+  }
+} catch (e: any) {
+  console.log('[DB] Migration check:', e.message?.slice(0,120));
+}
+
+// --- AUTO-SEED: if stalls empty (fresh Termux DB), seed minimal data ---
+try {
+  const c = (rawDb.prepare(`SELECT count(*) as c FROM stalls`).get() as any).c;
+  if (c === 0) {
+    console.log('[DB] Empty stalls → auto-seeding for Termux...');
+    const { execSync } = require('node:child_process');
+    // Use dynamic import of seed file if available, else inline minimal seed
+    try {
+      // Try to run seed.js if exists
+      const seedCandidates = [
+        require('node:path').join(__dirname, 'seed.js'),
+        require('node:path').join(__dirname, '../../src/db/seed.ts'),
+      ];
+      let ran = false;
+      for (const p of seedCandidates) {
+        if (require('node:fs').existsSync(p)) {
+          console.log('[DB] Found seed at', p, '— run `node dist/db/seed.js` manually if auto-seed fails');
+          break;
+        }
+      }
+      // Inline minimal seed (ensures login/menus work even if seed.js not executed)
+      rawDb.prepare(`INSERT OR IGNORE INTO stalls (id, name, description) VALUES ('stall-001','Campus Grill','Burgers, Rice Meals & More')`).run();
+      rawDb.prepare(`INSERT OR IGNORE INTO stalls (id, name, description) VALUES ('stall-002','Brew & Bites','Coffee, Milk Tea & Pastries')`).run();
+      rawDb.prepare(`INSERT OR IGNORE INTO categories (id, stall_id, name, display_order) VALUES ('cat-burgers','stall-001','Burgers',1)`).run();
+      rawDb.prepare(`INSERT OR IGNORE INTO categories (id, stall_id, name, display_order) VALUES ('cat-rice','stall-001','Rice Meals',2)`).run();
+      rawDb.prepare(`INSERT OR IGNORE INTO categories (id, stall_id, name, display_order) VALUES ('cat-drinks','stall-002','Drinks',1)`).run();
+      rawDb.prepare(`INSERT OR IGNORE INTO categories (id, stall_id, name, display_order) VALUES ('cat-pastries','stall-002','Pastries',2)`).run();
+      rawDb.prepare(`INSERT OR IGNORE INTO ingredients (id, name, unit, current_stock, min_threshold, cost_per_unit) VALUES ('ing-bun','Burger Bun','pcs',100,20,5)`).run();
+      rawDb.prepare(`INSERT OR IGNORE INTO ingredients (id, name, unit, current_stock, min_threshold, cost_per_unit) VALUES ('ing-patty','Beef Patty','pcs',80,15,25)`).run();
+      rawDb.prepare(`INSERT OR IGNORE INTO ingredients (id, name, unit, current_stock, min_threshold, cost_per_unit) VALUES ('ing-chicken','Fried Chicken','pcs',50,10,30)`).run();
+      rawDb.prepare(`INSERT OR IGNORE INTO ingredients (id, name, unit, current_stock, min_threshold, cost_per_unit) VALUES ('ing-rice','Steamed Rice','g',10000,2000,0.02)`).run();
+      rawDb.prepare(`INSERT OR IGNORE INTO users (id, username, pin, role, stall_id, display_name) VALUES ('user-admin','admin','admin123','ADMIN',NULL,'Canteen Manager')`).run();
+      rawDb.prepare(`INSERT OR IGNORE INTO users (id, username, pin, role, stall_id, display_name) VALUES ('user-grill','grill','grill123','STALL_OWNER','stall-001','Campus Grill Owner')`).run();
+      rawDb.prepare(`INSERT OR IGNORE INTO users (id, username, pin, role, stall_id, display_name) VALUES ('user-brew','brew','brew123','STALL_OWNER','stall-002','Brew & Bites Owner')`).run();
+      // Menu with images
+      rawDb.prepare(`INSERT OR IGNORE INTO menu_items (id, stall_id, category_id, name, price, description, image_url) VALUES ('item-burger-classic','stall-001','cat-burgers','Classic Burger',89,'1 patty, cheese, lettuce, sauce','https://images.unsplash.com/photo-1568909344668-6f14a07b56a0?w=500&auto=format&fit=crop&q=60')`).run();
+      rawDb.prepare(`INSERT OR IGNORE INTO menu_items (id, stall_id, category_id, name, price, description, image_url) VALUES ('item-burger-double','stall-001','cat-burgers','Double Cheeseburger',139,'2 patties, double cheese','https://images.unsplash.com/photo-1550547660-d9450f859349?w=500&auto=format&fit=crop&q=60')`).run();
+      rawDb.prepare(`INSERT OR IGNORE INTO menu_items (id, stall_id, category_id, name, price, description, image_url) VALUES ('item-rice-chicken','stall-001','cat-rice','Chicken Rice Meal',99,'1 fried chicken + 250g rice','https://images.unsplash.com/photo-1604908177223-81e336fca6a2?w=500&auto=format&fit=crop&q=60')`).run();
+      console.log('[DB] Auto-seed minimal done');
+    } catch (e:any) { console.log('[DB] Auto-seed failed:', e.message?.slice(0,200)); }
+  } else {
+    console.log(`[DB] Stalls count=${c}, users=${(rawDb.prepare(`SELECT count(*) as c FROM users`).get() as any).c}, menu=${(rawDb.prepare(`SELECT count(*) as c FROM menu_items`).get() as any).c}`);
+  }
+} catch (e:any) { console.log('[DB] Auto-seed check:', e.message?.slice(0,120)); }
+
 console.log('[DB] Schema ensured, WAL enabled');
 
 export const db: any = rawDb;
