@@ -38,7 +38,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <div className="text-[11px] sm:text-xs text-brand-700/60 -mt-0.5 hidden sm:block">Offline Canteen OS</div>
             </div>
           </Link>
-          {/* Desktop nav */}
+          {/* Desktop nav - hidden on mobile/tablet */}
           <nav className="hidden lg:flex gap-1 xl:gap-2 items-center">
             {nav.map(n => {
               const active = loc.pathname.startsWith(n.to);
@@ -50,26 +50,37 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </Link>
               );
             })}
+          </nav>
+          {/* Right side: user at top-right always visible (mobile/tablet/laptop) + hamburger */}
+          <div className="flex items-center gap-2 sm:gap-3">
             {user ? (
-              <div className="flex items-center gap-2 ml-2 pl-2 border-l border-brand-300/40">
-                <div className="hidden xl:block text-right">
-                  <div className="text-xs font-bold leading-none flex items-center gap-1 text-brand-700"><Shield size={12} className={user.role==='ADMIN'?'text-brand-700':'text-brand-500'}/> {user.display_name}</div>
-                  <div className="text-[10px] text-brand-700/60">{user.role}{user.stall_name ? ` • ${user.stall_name}` : ''}</div>
+              <div className="flex items-center gap-2">
+                <div className="text-right hidden sm:block">
+                  <div className="text-xs font-bold leading-none flex items-center justify-end gap-1 text-brand-700"><Shield size={12} className={user.role==='ADMIN'?'text-brand-700':'text-brand-500'}/><span className="truncate max-w-[90px] sm:max-w-[120px]">{user.display_name}</span></div>
+                  <div className="text-[10px] text-brand-700/60 truncate max-w-[120px]">{user.role}{user.stall_name ? ` • ${user.stall_name}` : ''}</div>
                 </div>
-                <button onClick={()=>{ logout(); navigate('/login'); }} className="flex items-center gap-1.5 bg-brand-100 hover:bg-brand-300 border border-brand-300/40 rounded-xl px-3 py-2.5 text-sm font-medium text-brand-700 min-h-[44px]"><LogOut size={14}/> Logout</button>
+                <div className="sm:hidden text-right min-w-0">
+                  <div className="text-xs font-bold leading-none text-brand-700 truncate max-w-[80px]">{user.display_name}</div>
+                  <div className="text-[9px] text-brand-700/60 truncate">{user.role}</div>
+                </div>
+                <button onClick={()=>{ logout(); navigate('/login'); }} className="flex items-center gap-1.5 bg-brand-100 hover:bg-brand-300 border border-brand-300/40 rounded-xl px-2.5 sm:px-3 py-2 sm:py-2.5 text-xs sm:text-sm font-medium text-brand-700 min-h-[40px] sm:min-h-[44px] shrink-0"><LogOut size={14}/> <span className="hidden sm:inline">Logout</span><span className="sm:hidden">Out</span></button>
               </div>
             ) : (
-              <Link to="/login" className={`ml-2 px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 border transition min-h-[44px] ${loc.pathname==='/login'?'bg-brand-700 text-brand-100 border-brand-700':'bg-brand-600 text-brand-100 hover:bg-brand-300 border-brand-600 hover:border-brand-300 shadow-sm'}`}><LogIn size={16}/> Login</Link>
+              <Link to="/login" className={`hidden lg:flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border transition min-h-[44px] ${loc.pathname==='/login'?'bg-brand-700 text-brand-100 border-brand-700':'bg-brand-600 text-brand-100 hover:bg-brand-300 border-brand-600 hover:border-brand-300 shadow-sm'}` }><LogIn size={16}/> Login</Link>
             )}
-          </nav>
-          {/* Mobile hamburger */}
-          <button onClick={()=>setMenuOpen(!menuOpen)} className="lg:hidden p-2.5 rounded-xl border border-brand-300/40 bg-brand-100 hover:bg-brand-300 text-brand-700 min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Menu">
-            {menuOpen ? <X size={20}/> : <Menu size={20}/>}
-          </button>
+            {/* Mobile/Tablet login when not logged in - also top-right */}
+            {!user && (
+              <Link to="/login" className={`lg:hidden flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium border min-h-[40px] sm:min-h-[44px] ${loc.pathname==='/login'?'bg-brand-700 text-brand-100 border-brand-700':'bg-brand-600 text-brand-100 border-brand-600'}`}><LogIn size={14}/> Login</Link>
+            )}
+            {/* Mobile hamburger - only for nav */}
+            <button onClick={()=>setMenuOpen(!menuOpen)} className="lg:hidden p-2 sm:p-2.5 rounded-xl border border-brand-300/40 bg-brand-100 hover:bg-brand-300 text-brand-700 min-w-[40px] sm:min-w-[44px] min-h-[40px] sm:min-h-[44px] flex items-center justify-center shrink-0" aria-label="Menu">
+              {menuOpen ? <X size={18} className="sm:w-5 sm:h-5"/> : <Menu size={18} className="sm:w-5 sm:h-5"/>}
+            </button>
+          </div>
         </div>
-        {/* Mobile drawer */}
+        {/* Mobile drawer - nav only, no user (user already at top-right) */}
         {menuOpen && (
-          <div className="lg:hidden border-t border-brand-300/40 bg-brand-100 px-3 py-3 space-y-2 shadow-lg">
+          <div className="lg:hidden border-t border-brand-300/40 bg-brand-100 px-3 py-3 shadow-lg">
             <div className="grid grid-cols-2 gap-2">
               {nav.map(n => {
                 const active = loc.pathname.startsWith(n.to);
@@ -82,17 +93,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 );
               })}
             </div>
-            {user ? (
-              <div className="flex items-center justify-between gap-2 pt-2 border-t border-brand-300/40">
-                <div className="text-xs">
-                  <div className="font-bold text-brand-700 flex items-center gap-1"><Shield size={12}/>{user.display_name}</div>
-                  <div className="text-brand-700/60">{user.role}{user.stall_name?` • ${user.stall_name}`:''}</div>
-                </div>
-                <button onClick={()=>{ logout(); navigate('/login'); setMenuOpen(false); }} className="flex items-center gap-1.5 bg-brand-100 border border-brand-300/40 rounded-xl px-4 py-2.5 text-sm font-medium text-brand-700"><LogOut size={14}/> Logout</button>
-              </div>
-            ) : (
-              <Link to="/login" onClick={()=>setMenuOpen(false)} className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-medium border min-h-[44px] ${loc.pathname==='/login'?'bg-brand-700 text-brand-100':'bg-brand-600 text-brand-100 border-brand-600'}`}><LogIn size={16}/> Login</Link>
-            )}
           </div>
         )}
         {health && (
