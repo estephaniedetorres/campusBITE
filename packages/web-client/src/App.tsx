@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import KioskPage from './apps/kiosk/KioskPage';
 import PosPage from './apps/pos/PosPage';
@@ -6,7 +6,7 @@ import KdsPage from './apps/kds/KdsPage';
 import AdminPage from './apps/admin/AdminPage';
 import LoginPage from './apps/auth/LoginPage';
 import { AuthProvider } from './lib/auth';
-import { Star, Clock, MapPin, Flame } from 'lucide-react';
+import { Star, Clock, MapPin, Flame, ShoppingBag, Store, ChefHat, Boxes } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from './lib/api';
 
@@ -30,7 +30,7 @@ function Home() {
             <h1 className="font-serif text-3xl sm:text-4xl lg:text-[42px] font-bold tracking-tight text-stone-900 mt-4 leading-[0.95]">Canteen favorites,<br/><span className="text-fork-green">ready when you are.</span></h1>
             <p className="mt-4 text-sm sm:text-base text-stone-600 max-w-lg leading-relaxed">Ice cream from Matees. Famous fries from Potato Corner. Scan, order, pick up.</p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <a href="/kiosk" className="inline-flex items-center justify-center bg-stone-900 text-white px-6 py-3 rounded-full font-semibold hover:bg-stone-800">Order now</a>
+              <Link to="/kiosk" className="inline-flex items-center justify-center bg-stone-900 text-white px-6 py-3 rounded-full font-semibold hover:bg-stone-800">Order now</Link>
               <span className="inline-flex items-center gap-2 text-xs text-stone-500 px-3 py-3"><MapPin size={14}/> Hotspot: {hotspotHost} · <Clock size={14}/> 10-15 min</span>
             </div>
             <div className="mt-6 flex items-center gap-4 text-xs">
@@ -100,8 +100,32 @@ function Home() {
             <div className="text-sm text-stone-500 mt-1">Manage your menu, prices, and stock. Log in to access POS, Kitchen, and Inventory for your stall.</div>
             <div className="mt-2 text-xs text-stone-400">Demo: <span className="font-mono bg-stone-100 px-1.5 py-0.5 rounded">matees/matees123</span> (Matees) · <span className="font-mono bg-stone-100 px-1.5 py-0.5 rounded">potato/potato123</span> (Potato Corner) · <span className="font-mono bg-stone-100 px-1.5 py-0.5 rounded">admin/admin123</span> (all)</div>
           </div>
-          <a href="/login" className="shrink-0 bg-stone-900 text-white px-6 py-3 rounded-full font-semibold hover:bg-stone-800">Stall Owner Log in</a>
+          <Link to="/login" className="shrink-0 bg-stone-900 text-white px-6 py-3 rounded-full font-semibold hover:bg-stone-800">Stall Owner Log in</Link>
         </div>
+      </div>
+
+      {/* Open — quick access, all links functional via React Router */}
+      <div className="fork-card rounded-2xl p-5">
+        <div className="font-serif font-bold text-stone-900">Open</div>
+        <div className="grid grid-cols-2 gap-3 mt-3">
+          <Link to="/kiosk" className="fork-card rounded-xl p-4 flex flex-col gap-1 hover:shadow-forkHover transition border-stone-200 bg-stone-900 text-white border-stone-900">
+            <span className="font-bold flex items-center gap-2"><ShoppingBag size={16}/> Kiosk</span>
+            <span className="text-xs opacity-80">Customer order</span>
+          </Link>
+          <Link to="/pos" className="fork-card rounded-xl p-4 flex flex-col gap-1 hover:shadow-forkHover transition">
+            <span className="font-bold flex items-center gap-2 text-stone-900"><Store size={16}/> POS</span>
+            <span className="text-xs text-stone-500">Cashier</span>
+          </Link>
+          <Link to="/kds" className="fork-card rounded-xl p-4 flex flex-col gap-1 hover:shadow-forkHover transition">
+            <span className="font-bold flex items-center gap-2 text-stone-900"><ChefHat size={16}/> Kitchen</span>
+            <span className="text-xs text-stone-500">KDS</span>
+          </Link>
+          <Link to="/admin" className="fork-card rounded-xl p-4 flex flex-col gap-1 hover:shadow-forkHover transition">
+            <span className="font-bold flex items-center gap-2 text-stone-900"><Boxes size={16}/> Admin</span>
+            <span className="text-xs text-stone-500">Menu + Stock</span>
+          </Link>
+        </div>
+        <div className="text-xs text-stone-400 mt-3">Kiosk is public — POS/Kitchen/Admin require stall login.</div>
       </div>
 
     </div>
