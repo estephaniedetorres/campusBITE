@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Image, Linking, Alert } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { useRouter } from 'expo-router';
 import { getApiBase, apiGet } from '../constants/api';
 
 export default function Home() {
@@ -22,8 +23,10 @@ export default function Home() {
   const mateesRating = matees?.rating != null ? Number(matees.rating).toFixed(1) : '4.8';
   const potatoRating = potato?.rating != null ? Number(potato.rating).toFixed(1) : '4.9';
 
+  const router = useRouter();
   function open(path: string) {
-    Linking.openURL(`${getApiBase()}${path}`).catch(() => Alert.alert('Cannot open', `${getApiBase()}${path}`));
+    // Expo Go web: stay on 8081 via expo-router, not Node 3000
+    router.push(path as any);
   }
 
   return (
