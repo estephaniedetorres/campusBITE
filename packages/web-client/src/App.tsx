@@ -58,7 +58,7 @@ function Home() {
       <div className="grid md:grid-cols-2 gap-4">
         <div className="fork-card rounded-[20px] overflow-hidden">
           <div className="h-36 relative">
-            <img src="https://images.unsplash.com/photo-1495147466023-a36482277724?w=600&auto=format&fit=crop&q=60" alt="Matees" className="absolute inset-0 w-full h-full object-cover" />
+            <img src="https://images.unsplash.com/photo-1488900128323-21503983a07e?w=600&auto=format&fit=crop&q=60" alt="Matees" className="absolute inset-0 w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
             <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between">
               <div>
