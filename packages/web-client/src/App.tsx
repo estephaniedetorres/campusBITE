@@ -54,7 +54,7 @@ function Home() {
         </div>
       </div>
 
-      {/* Featured stalls — display only, not links */}
+      {/* Featured stalls — display only, not clickable */}
       <div className="grid md:grid-cols-2 gap-4">
         <div className="fork-card rounded-[20px] overflow-hidden">
           <div className="h-36 relative">
