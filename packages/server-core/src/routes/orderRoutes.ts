@@ -34,13 +34,14 @@ export function createOrderRouter(wsGateway: WSGateway) {
     const stall = db.prepare(`SELECT id FROM stalls WHERE id=?`).get(stallId);
     if (!stall) return res.status(404).json({ error: 'Stall not found' });
 
-    // Compute total + validate items availability + fetch prices
+    // Compute total + validate items availability + fetch prices + enforce per-stall cart (must checkout before switching)
     let total = 0;
     const enriched: { menuItemId: string; quantity: number; unitPrice: number; subtotal: number }[] = [];
     for (const it of items) {
-      const menuItem = db.prepare(`SELECT id, price, is_available FROM menu_items WHERE id=?`).get(it.menuItemId) as any;
+      const menuItem = db.prepare(`SELECT id, price, is_available, stall_id FROM menu_items WHERE id=?`).get(it.menuItemId) as any;
       if (!menuItem) return res.status(404).json({ error: `Menu item ${it.menuItemId} not found` });
       if (!menuItem.is_available) return res.status(400).json({ error: `Item ${it.menuItemId} not available` });
+      if (menuItem.stall_id !== stallId) return res.status(400).json({ error: `All items must be from the same stall. Item ${it.menuItemId} belongs to ${menuItem.stall_id}, order is for ${stallId}. Please checkout current cart before ordering from another stall.` });
       const subtotal = menuItem.price * it.quantity;
       total += subtotal;
       enriched.push({ menuItemId: it.menuItemId, quantity: it.quantity, unitPrice: menuItem.price, subtotal });

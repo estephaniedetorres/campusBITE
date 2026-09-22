@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { useWebSocket } from '../../hooks/useWebSocket';
-import { ShoppingCart, Plus, Minus, Utensils, CheckCircle, Clock, QrCode, Image as ImageIcon } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Star, Clock, QrCode, Heart } from 'lucide-react';
 
 type MenuItem = { id: string; name: string; price: number; description: string; stall_id: string; category_id: string; image_url?: string | null; category_name?: string; };
 
@@ -21,8 +21,8 @@ function getMenuImage(item: MenuItem): string {
   if (n.includes('burger')) return fallbackImages['item-burger-classic'];
   if (n.includes('chicken') || n.includes('rice')) return fallbackImages['item-rice-chicken'];
   if (n.includes('latte') || n.includes('coffee')) return fallbackImages['item-coffee-latte'];
-  if (n.includes('milk') || n.includes('tea') || n.includes('boba')) return fallbackImages['item-milk-tea'];
-  if (n.includes('croissant') || n.includes('pastry') || n.includes('bread')) return fallbackImages['item-croissant'];
+  if (n.includes('milk') || n.includes('tea')) return fallbackImages['item-milk-tea'];
+  if (n.includes('croissant')) return fallbackImages['item-croissant'];
   return 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&auto=format&fit=crop&q=60';
 }
 
@@ -40,16 +40,11 @@ export default function KioskPage() {
   const [liveStatus, setLiveStatus] = useState<string>('');
   const [loading, setLoading] = useState(false);
 
-  // Fetch stalls — QR parsing: if ?stall= exists, auto-select that stall
   useEffect(() => {
     api.get<any[]>('/api/stalls').then(s => {
       setStalls(s);
-      if (qrStall && s.find(x=>x.id===qrStall)) {
-        setStallId(qrStall);
-      } else if (qrStall && !s.find(x=>x.id===qrStall)) {
-        // invalid QR stall, fallback to first but show error
-        if (s[0]) setStallId(s[0].id);
-      } else if (s[0]) setStallId(s[0].id);
+      if (qrStall && s.find(x=>x.id===qrStall)) setStallId(qrStall);
+      else if (s[0]) setStallId(s[0].id);
     });
   }, [qrStall]);
   useEffect(() => {
@@ -58,7 +53,6 @@ export default function KioskPage() {
     api.get<any[]>(`/api/menu?stallId=${stallId}`).then(setMenu);
   }, [stallId]);
 
-  // WS for order tracking
   useWebSocket({
     orderId: lastOrder?.order?.id,
     onMessage: (msg) => {
@@ -69,15 +63,27 @@ export default function KioskPage() {
     }
   });
 
+  const currentStall = stalls.find(s => s.id === stallId);
+  const handleStallChange = (newStallId: string) => {
+    if (newStallId === stallId) return;
+    if (cart.size > 0) {
+      alert(`Checkout cart from "${currentStall?.name}" before switching.`);
+      return;
+    }
+    setStallId(newStallId);
+    setActiveCat('all');
+  };
+
   const add = (id: string) => setCart(m => new Map(m).set(id, (m.get(id) || 0) + 1));
   const sub = (id: string) => setCart(m => {
     const n = new Map(m); const v = (n.get(id) || 0) - 1; if (v <= 0) n.delete(id); else n.set(id, v); return n;
   });
 
   const cartItems = [...cart.entries()].map(([id, qty]) => {
-    const item = menu.find(i => i.id === id)!;
+    const item = menu.find(i => i.id === id);
+    if (!item) return null as any;
     return { ...item, qty, subtotal: item.price * qty };
-  });
+  }).filter(Boolean) as (MenuItem & { qty: number; subtotal: number })[];
   const total = cartItems.reduce((s, i) => s + i.subtotal, 0);
   const filtered = activeCat === 'all' ? menu : menu.filter(m => m.category_id === activeCat);
 
@@ -97,110 +103,120 @@ export default function KioskPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* QR banner */}
+    <div className="space-y-5 pb-24">
       {qrStall && (
-        <div className={`rounded-2xl border-2 p-3 flex items-center gap-3 ${stalls.find(s=>s.id===qrStall) ? 'bg-brand-100 border-brand-300' : 'bg-brand-100 border-brand-300'}`}>
-          <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${stalls.find(s=>s.id===qrStall) ? 'bg-brand-600 text-brand-100' : 'bg-brand-600 text-brand-100'}`}><QrCode size={18}/></div>
-          <div className="flex-1">
-            <div className="font-bold text-sm">{stalls.find(s=>s.id===qrStall) ? `QR → ${stalls.find(s=>s.id===qrStall)?.name}` : `Invalid QR stall "${qrStall}"`}</div>
-            <div className="text-xs text-brand-700/70">{qrTable ? `Table ${qrTable} • ` : ''}{stalls.find(s=>s.id===qrStall) ? 'Menu filtered to this stall via QR scan' : 'Showing all stalls — ask staff for correct QR'}</div>
+        <div className="fork-card rounded-2xl p-3.5 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-fork-green text-white flex items-center justify-center shrink-0"><QrCode size={18}/></div>
+          <div className="flex-1 min-w-0">
+            <div className="font-serif font-bold text-sm text-stone-900">{stalls.find(s=>s.id===qrStall)?.name || `Stall ${qrStall}`} {qrTable && `· Table ${qrTable}`}</div>
+            <div className="text-xs text-stone-500 truncate">Scanned via QR — showing this stall</div>
           </div>
-          {qrTable && <div className="bg-brand-100 border px-3 py-1.5 rounded-xl text-xs font-bold">Table {qrTable}</div>}
+          <span className="hidden sm:inline text-xs font-medium px-3 py-1.5 rounded-full bg-fork-greenSoft text-fork-green border border-fork-green/10">QR</span>
         </div>
       )}
-      {/* Stall selector — responsive wrap + scroll on mobile */}
-      <div className="flex flex-col sm:flex-row gap-2 sm:gap-2 sm:items-center sm:flex-wrap">
-        <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-none -mx-1 px-1 snap-x snap-mandatory">
-          {stalls.map(s => (
-            <button key={s.id} onClick={() => setStallId(s.id)}
-              className={`snap-start shrink-0 px-3 sm:px-4 py-2.5 rounded-full text-xs sm:text-sm font-semibold border shadow-sm min-h-[44px] ${stallId===s.id ? 'bg-brand-600 text-brand-100 border-brand-600' : 'bg-brand-100 border-brand-300/40 text-brand-700 hover:bg-brand-300'} ${qrStall && s.id!==qrStall ? 'opacity-50' : ''}`}>
-              <Utensils size={14} className="inline mr-1.5 -mt-0.5" />{s.name}
+
+      <div className="flex flex-wrap items-center gap-2">
+        {stalls.map(s => {
+          const active = s.id === stallId;
+          const locked = cart.size>0 && !active;
+          return (
+            <button key={s.id} onClick={() => handleStallChange(s.id)} disabled={locked}
+              className={`px-4 py-2 rounded-full text-sm font-medium border transition ${active ? 'bg-stone-900 text-white border-stone-900' : locked ? 'bg-stone-50 text-stone-400 border-stone-200 cursor-not-allowed' : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-50'}`}>
+              {s.name}
             </button>
-          ))}
-        </div>
+          );
+        })}
         {lastOrder && (
-          <div className="w-full sm:w-auto sm:ml-auto bg-brand-100 border border-brand-300 rounded-xl px-3 sm:px-4 py-2 text-xs sm:text-sm flex items-center gap-2">
-            <CheckCircle size={14} className="text-brand-500 shrink-0" />
-            <span className="truncate">Order <b>{lastOrder.order.pickup_code}</b> • {liveStatus || lastOrder.order.status}</span>
-            <span className="hidden md:inline text-brand-700/60 whitespace-nowrap">Show code at POS</span>
+          <div className="ml-auto hidden sm:flex items-center gap-2 text-xs font-medium px-3 py-2 rounded-full bg-white border border-stone-200">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"/> Order <b>{lastOrder.order.pickup_code}</b> · {liveStatus || lastOrder.order.status}
           </div>
         )}
       </div>
 
-      {/* Category tabs - scrollable */}
-      <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory scrollbar-none">
-        <button onClick={()=>setActiveCat('all')} className={`snap-start shrink-0 px-3 sm:px-4 py-2.5 rounded-full text-xs sm:text-sm whitespace-nowrap border shadow-sm min-h-[44px] ${activeCat==='all'?'bg-brand-600 text-brand-100 border-brand-600':'bg-brand-100 border-brand-300/40 text-brand-700 hover:bg-brand-300'}`}>All</button>
+      {currentStall && (
+        <div className="fork-card rounded-[24px] overflow-hidden">
+          <div className="h-28 sm:h-36 bg-gradient-to-br from-stone-900 to-stone-700 relative">
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"/>
+            <div className="absolute bottom-4 left-5 right-5 flex items-end justify-between">
+              <div>
+                <h2 className="font-serif text-xl sm:text-2xl font-bold text-white tracking-tight">{currentStall.name}</h2>
+                <div className="flex items-center gap-2 mt-1 text-xs text-white/80">
+                  <span className="inline-flex items-center gap-1 bg-white text-stone-900 px-2 py-1 rounded-full font-semibold"><Star size={12} fill="currentColor"/> 4.8</span>
+                  <span>· {currentStall.description || 'Canteen favourite'}</span>
+                </div>
+              </div>
+              <span className="hidden sm:inline-flex items-center gap-1 bg-white/15 backdrop-blur text-white px-3 py-1.5 rounded-full text-xs font-medium border border-white/20"><Clock size={12}/> 10-15 min</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+        <button onClick={()=>setActiveCat('all')} className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium border ${activeCat==='all'?'bg-stone-900 text-white border-stone-900':'bg-white border-stone-200 text-stone-600'}`}>All</button>
         {categories.map(c => (
-          <button key={c.id} onClick={()=>setActiveCat(c.id)} className={`snap-start shrink-0 px-3 sm:px-4 py-2.5 rounded-full text-xs sm:text-sm whitespace-nowrap border shadow-sm min-h-[44px] ${activeCat===c.id?'bg-brand-600 text-brand-100 border-brand-600':'bg-brand-100 border-brand-300/40 text-brand-700 hover:bg-brand-300'}`}>{c.name}</button>
+          <button key={c.id} onClick={()=>setActiveCat(c.id)} className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium border ${activeCat===c.id?'bg-stone-900 text-white border-stone-900':'bg-white border-stone-200 text-stone-600'}`}>{c.name}</button>
         ))}
       </div>
 
-      {/* Menu grid - iPhone 17 Pro Max 430:2col, Android 360:2col, Tablet 768:3col, Laptop 1024:4col */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.map(item => {
           const qty = cart.get(item.id) || 0;
           return (
-            <div key={item.id} className="bg-brand-100 rounded-2xl border border-brand-300/40 p-3 sm:p-4 flex flex-col shadow-sm hover:shadow-md transition">
-              <div className="w-full h-28 sm:h-32 rounded-xl overflow-hidden bg-brand-100 border border-brand-300/20 relative">
-                <img
-                  src={getMenuImage(item)}
-                  alt={item.name}
-                  loading="lazy"
-                  className="w-full h-full object-cover"
-                  onError={(e)=>{ (e.currentTarget as HTMLImageElement).style.display='none'; (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove('hidden'); }}
-                />
-                <div className="hidden absolute inset-0 bg-gradient-to-br from-brand-100 to-brand-300/30 flex items-center justify-center text-brand-300">
-                  <ImageIcon size={28} className="sm:w-8 sm:h-8" />
-                </div>
-                {!item.image_url && !fallbackImages[item.id] ? null : null}
+            <div key={item.id} className="fork-card rounded-[20px] overflow-hidden group hover:shadow-forkHover transition">
+              <div className="relative h-44 overflow-hidden bg-stone-100">
+                <img src={getMenuImage(item)} alt={item.name} className="w-full h-full object-cover group-hover:scale-[1.03] transition duration-500" />
+                <button className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 backdrop-blur flex items-center justify-center text-stone-400 hover:text-red-500 border border-stone-200"><Heart size={14}/></button>
+                <span className="absolute bottom-3 left-3 bg-stone-900 text-white text-xs font-semibold px-2.5 py-1 rounded-full">₱{item.price}</span>
               </div>
-              <div className="font-semibold mt-2 sm:mt-3 leading-tight text-brand-700 text-sm sm:text-base line-clamp-1">{item.name}</div>
-              <div className="text-[11px] sm:text-xs text-brand-700/60 line-clamp-2 min-h-[32px]">{item.description}</div>
-              <div className="flex items-center justify-between mt-2 sm:mt-3">
-                <span className="font-bold text-brand-500 text-sm sm:text-base">₱{item.price}</span>
-                {qty === 0 ? (
-                  <button onClick={()=>add(item.id)} className="bg-brand-600 hover:bg-brand-300 text-brand-100 rounded-full p-2 sm:p-2.5 shadow-sm min-w-[40px] min-h-[40px] sm:min-w-[44px] sm:min-h-[44px] flex items-center justify-center"><Plus size={16} /></button>
-                ) : (
-                  <div className="flex items-center gap-1.5 bg-brand-600 text-brand-100 rounded-full px-1 py-1 shadow-sm">
-                    <button onClick={()=>sub(item.id)} className="w-8 h-8 sm:w-7 sm:h-7 rounded-full bg-brand-100/20 flex items-center justify-center"><Minus size={14} /></button>
-                    <span className="w-6 text-center text-sm font-bold">{qty}</span>
-                    <button onClick={()=>add(item.id)} className="w-8 h-8 sm:w-7 sm:h-7 rounded-full bg-brand-100/20 flex items-center justify-center"><Plus size={14} /></button>
-                  </div>
-                )}
+              <div className="p-4">
+                <div className="font-serif font-bold text-stone-900 leading-tight line-clamp-1">{item.name}</div>
+                <div className="text-xs text-stone-500 line-clamp-2 mt-1 min-h-[32px]">{item.description}</div>
+                <div className="flex items-center justify-between mt-3">
+                  <span className="text-xs text-stone-500 flex items-center gap-1"><Star size={12} className="text-amber-400 fill-amber-400"/> 4.9 · {item.category_name || 'Popular'}</span>
+                  {qty === 0 ? (
+                    <button onClick={()=>add(item.id)} className="w-9 h-9 rounded-full bg-stone-900 text-white flex items-center justify-center hover:bg-stone-800"><Plus size={16}/></button>
+                  ) : (
+                    <div className="flex items-center gap-1 bg-stone-900 text-white rounded-full p-1">
+                      <button onClick={()=>sub(item.id)} className="w-7 h-7 rounded-full bg-white/15 flex items-center justify-center"><Minus size={14}/></button>
+                      <span className="w-7 text-center text-sm font-bold">{qty}</span>
+                      <button onClick={()=>add(item.id)} className="w-7 h-7 rounded-full bg-white/15 flex items-center justify-center"><Plus size={14}/></button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* Cart drawer - safe area for iPhone */}
-      <div className="fixed bottom-0 left-0 right-0 bg-brand-100 border-t border-brand-300/40 shadow-2xl pb-safe">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 flex items-center gap-3 sm:gap-4">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 pb-safe">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
           <div className="flex-1 min-w-0">
-            <div className="text-xs sm:text-sm font-semibold flex items-center gap-2 text-brand-700"><ShoppingCart size={14} className="sm:w-4 sm:h-4 shrink-0" /> <span className="truncate">{cartItems.length} items • ₱{total.toFixed(2)}</span></div>
-            <div className="text-[11px] sm:text-xs text-brand-700/60 truncate">{cartItems.map(i=>`${i.name} ×${i.qty}`).join(', ') || 'Cart empty - add items'}</div>
+            <div className="text-sm font-semibold text-stone-900 flex items-center gap-2"><ShoppingCart size={16}/> {cartItems.length} items · ₱{total.toFixed(2)} {currentStall && cartItems.length>0 && <span className="hidden sm:inline text-stone-500">· {currentStall.name}</span>}</div>
+            <div className="text-xs text-stone-500 truncate">{cartItems.map(i=>`${i.name} ×${i.qty}`).join(' · ') || 'Add items from one stall'}</div>
           </div>
           <button disabled={cartItems.length===0 || loading} onClick={checkout}
-            className="shrink-0 bg-brand-600 hover:bg-brand-300 disabled:bg-brand-300/40 text-brand-100 font-bold px-4 sm:px-6 py-3 rounded-xl shadow-sm transition text-sm sm:text-base min-h-[44px]">
-            {loading ? 'Placing...' : `Checkout • ₱${total.toFixed(2)}`}
+            className="shrink-0 bg-stone-900 disabled:bg-stone-200 disabled:text-stone-400 text-white font-semibold px-6 py-3 rounded-full">
+            {loading ? 'Placing…' : `Checkout · ₱${total.toFixed(2)}`}
           </button>
         </div>
       </div>
 
-      {/* Live tracker */}
       {lastOrder && (
-        <div className="bg-brand-100 rounded-2xl border border-brand-300/40 p-5 pb-24 shadow-sm">
-          <h3 className="font-bold flex items-center gap-2 text-brand-700"><Clock size={16} /> Live Order Tracker — {lastOrder.order.pickup_code}</h3>
-          <div className="flex gap-2 mt-3">
+        <div className="fork-card rounded-2xl p-5 pb-6">
+          <h3 className="font-serif font-bold text-stone-900 flex items-center gap-2"><Clock size={16}/> Live tracker — {lastOrder.order.pickup_code}</h3>
+          <div className="flex gap-1.5 mt-4">
             {['PENDING_PAYMENT','CONFIRMED','PREPARING','READY','COMPLETED'].map(step => {
               const idx = ['PENDING_PAYMENT','CONFIRMED','PREPARING','READY','COMPLETED'].indexOf(liveStatus || lastOrder.order.status);
               const sIdx = ['PENDING_PAYMENT','CONFIRMED','PREPARING','READY','COMPLETED'].indexOf(step);
               const done = sIdx <= idx;
-              return <div key={step} className={`flex-1 rounded-xl px-2 py-3 text-center text-xs font-semibold border ${done?'bg-brand-600 text-brand-100 border-brand-600':'bg-brand-100 text-brand-700/60 border-brand-300/30'}`}>{step.replace('_',' ')}</div>;
+              return <div key={step} className={`flex-1 h-1.5 rounded-full ${done?'bg-fork-green':'bg-stone-200'}`} title={step}/>;
             })}
           </div>
-          <div className="text-xs text-brand-700/60 mt-2">Tip: Walk to POS counter and show code <b className="text-brand-700">{lastOrder.order.pickup_code}</b> to pay by cash.</div>
+          <div className="flex justify-between mt-2 text-[11px] font-medium text-stone-500">
+            <span>Ordered</span><span>Confirmed</span><span>Preparing</span><span>Ready</span><span>Done</span>
+          </div>
+          <div className="mt-3 text-xs text-stone-600 bg-stone-50 border border-stone-100 rounded-xl px-3 py-2">Show code <b className="text-stone-900">{lastOrder.order.pickup_code}</b> at POS to pay.</div>
         </div>
       )}
     </div>

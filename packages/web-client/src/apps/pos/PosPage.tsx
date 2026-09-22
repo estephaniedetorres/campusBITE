@@ -14,16 +14,11 @@ export default function PosPage() {
 
   if (!user) {
     return (
-      <div className="max-w-lg mx-auto bg-brand-100 rounded-2xl border border-brand-300/40 p-6 sm:p-8 text-center shadow-sm">
-        <Shield size={28} className="mx-auto text-brand-300 sm:w-8 sm:h-8" />
-        <h2 className="font-bold text-base sm:text-lg mt-3 text-brand-700">POS — Staff only</h2>
-        <p className="text-xs sm:text-sm text-brand-700/60 mt-2">Kiosk is the only public page. POS cashier requires login. <br/>STALL_OWNER sees only own stall orders, ADMIN sees all.</p>
-        <Link to="/login" className="inline-flex items-center justify-center gap-2 mt-4 bg-brand-600 hover:bg-brand-300 text-brand-100 px-6 py-3 rounded-xl font-semibold shadow-sm min-h-[44px] w-full sm:w-auto"><LogIn size={16}/> Login to POS</Link>
-        <div className="mt-4 text-xs bg-brand-100/60 border border-brand-300/30 rounded-xl p-3 text-left text-brand-700">
-          <div>grill / grill123 → Campus Grill POS</div>
-          <div>brew / brew123 → Brew & Bites POS</div>
-          <div>admin / admin123 → All stalls</div>
-        </div>
+      <div className="max-w-lg mx-auto fork-card rounded-[24px] p-8 text-center">
+        <Shield size={28} className="mx-auto text-stone-300" />
+        <h2 className="font-serif font-bold text-lg mt-3 text-stone-900">POS — Staff only</h2>
+        <p className="text-sm text-stone-500 mt-2">Kiosk is the only public page. POS requires login.<br/>Stall owners see own stall, ADMIN sees all.</p>
+        <Link to="/login" className="inline-flex items-center justify-center gap-2 mt-5 bg-stone-900 text-white px-6 py-3 rounded-full font-semibold"><LogIn size={16}/> Log in to POS</Link>
       </div>
     );
   }
@@ -57,88 +52,93 @@ export default function PosPage() {
     } catch (e: any) { alert(e.message); }
   }
 
-  const statusColor: Record<string,string> = {
-    PENDING_PAYMENT:'bg-brand-100 text-brand-700 border-brand-300',
-    CONFIRMED:'bg-brand-300/30 text-brand-700 border-brand-300',
-    PREPARING:'bg-brand-300/30 text-brand-700 border-brand-300',
-    READY:'bg-brand-300/30 text-brand-700 border-brand-300',
-    COMPLETED:'bg-brand-600 text-brand-100 border-brand-600',
-    CANCELLED:'bg-brand-100 text-brand-800 border-brand-300',
+  const statusStyle: Record<string,string> = {
+    PENDING_PAYMENT:'bg-amber-50 text-amber-700 border-amber-200',
+    CONFIRMED:'bg-sky-50 text-sky-700 border-sky-200',
+    PREPARING:'bg-violet-50 text-violet-700 border-violet-200',
+    READY:'bg-emerald-50 text-emerald-700 border-emerald-200',
+    COMPLETED:'bg-stone-900 text-white border-stone-900',
+    CANCELLED:'bg-red-50 text-red-700 border-red-200',
   };
 
   return (
     <div className="space-y-4">
-      <div className="bg-brand-100 rounded-2xl border border-brand-300/40 p-3 flex items-center gap-3 text-sm shadow-sm">
-        <div className="w-8 h-8 rounded-lg bg-brand-600 text-brand-100 flex items-center justify-center shrink-0"><Banknote size={14}/></div>
-        <div className="min-w-0 flex-1"><div className="font-bold text-brand-700 text-sm sm:text-base truncate">POS — {user.role==='ADMIN' ? 'All stalls' : user.stall_name}</div><div className="text-[11px] sm:text-xs text-brand-700/60 truncate">{user.display_name} • {user.role} {user.role==='STALL_OWNER' ? `• ${user.stall_id}` : ''}</div></div>
-        <div className="ml-auto text-xs bg-brand-100/60 border border-brand-300/40 px-3 py-1.5 rounded-lg hidden lg:block text-brand-700 shrink-0">Staff only</div>
+      <div className="fork-card rounded-2xl p-3.5 flex items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-stone-900 text-white flex items-center justify-center"><Banknote size={16}/></div>
+        <div>
+          <div className="font-semibold text-sm text-stone-900">POS — {user.role==='ADMIN' ? 'All stalls' : user.stall_name}</div>
+          <div className="text-xs text-stone-500">{user.display_name} · {user.role}</div>
+        </div>
+        <span className="ml-auto hidden sm:inline text-xs px-3 py-1.5 rounded-full bg-stone-50 border border-stone-200 text-stone-600">Staff only</span>
       </div>
-    <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] xl:grid-cols-[420px_1fr] gap-4 sm:gap-6">
-      <div className="space-y-4">
-        <div className="bg-brand-100 rounded-2xl border border-brand-300/40 p-4 sm:p-5 shadow-sm">
-          <h2 className="font-bold flex items-center gap-2 text-brand-700 text-base sm:text-lg"><Banknote size={18} /> POS — Cashier</h2>
-          <p className="text-xs sm:text-sm text-brand-700/60">Enter 4-char pickup code shown on student Kiosk.</p>
-          <div className="flex flex-col sm:flex-row gap-2 mt-4">
-            <input value={code} onChange={e=>setCode(e.target.value.toUpperCase())} onKeyDown={e=>e.key==='Enter'&&lookup()}
-              placeholder="e.g. A3X9" maxLength={4}
-              className="flex-1 tracking-[0.3em] font-mono text-lg sm:text-xl font-black uppercase text-center border-2 border-brand-600 rounded-xl px-4 py-3 focus:outline-none focus:border-brand-600 text-brand-700 placeholder:text-brand-300 min-h-[48px]" />
-            <button onClick={lookup} className="bg-brand-600 hover:bg-brand-300 text-brand-100 rounded-xl px-5 flex items-center justify-center gap-2 shadow-sm min-h-[48px] sm:min-h-[44px]"><Search size={18} /> Lookup</button>
-          </div>
-          {error && <div className="mt-3 text-sm text-brand-700 bg-brand-100 border border-brand-300 rounded-xl px-3 py-2">{error}</div>}
-          {result && (
-            <div className="mt-4 border-2 border-brand-600 rounded-2xl p-4 bg-brand-100/50">
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-2xl font-black tracking-widest">{result.order.pickup_code}</span>
-                <span className={`text-xs font-bold px-3 py-1.5 rounded-full border ${statusColor[result.order.status] || 'bg-brand-100 text-brand-700 border-brand-300'}`}>{result.order.status}</span>
-              </div>
-              <div className="text-sm mt-2 space-y-1">
-                {result.items.map((it:any)=>(<div key={it.id} className="flex justify-between"><span>{it.menu_item_name} ×{it.quantity}</span><span>₱{it.subtotal}</span></div>))}
-              </div>
-              <div className="flex justify-between font-black text-lg border-t mt-3 pt-3"><span>Total</span><span>₱{result.order.total_amount}</span></div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
-                {result.order.status==='PENDING_PAYMENT' && <button onClick={()=>updateStatus(result.order.id,'CONFIRMED')} className="col-span-1 sm:col-span-2 bg-brand-600 hover:bg-brand-300 text-brand-100 font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-sm min-h-[44px]"><Banknote size={18}/> Confirm Cash Payment</button>}
-                {result.order.status==='CONFIRMED' && <button onClick={()=>updateStatus(result.order.id,'PREPARING')} className="bg-brand-600 hover:bg-brand-300 text-brand-100 font-bold py-3 rounded-xl shadow-sm min-h-[44px]">Start Preparing</button>}
-                {result.order.status==='PREPARING' && <button onClick={()=>updateStatus(result.order.id,'READY')} className="bg-brand-600 hover:bg-brand-300 text-brand-100 font-bold py-3 rounded-xl shadow-sm min-h-[44px]">Mark Ready</button>}
-                {result.order.status==='READY' && <button onClick={()=>updateStatus(result.order.id,'COMPLETED')} className="bg-brand-600 hover:bg-brand-300 text-brand-100 font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-sm min-h-[44px]"><CheckCircle size={16}/> Completed / Picked up</button>}
-                {['PENDING_PAYMENT','CONFIRMED','PREPARING','READY'].includes(result.order.status) && <button onClick={()=>updateStatus(result.order.id,'CANCELLED')} className="border border-brand-300 text-brand-700 font-semibold py-3 rounded-xl hover:bg-brand-300 min-h-[44px]">Cancel</button>}
-                {result.order.status!=='PENDING_PAYMENT' && <button onClick={()=>window.print()} className="border border-brand-300/40 bg-brand-100 hover:bg-brand-300 py-3 rounded-xl flex items-center justify-center gap-2 text-brand-700 min-h-[44px]"><Printer size={16}/> Print Receipt</button>}
+      <div className="grid lg:grid-cols-[400px_1fr] gap-6">
+        <div className="space-y-4">
+          <div className="fork-card rounded-[20px] p-5">
+            <h2 className="font-serif font-bold text-stone-900">Cashier</h2>
+            <p className="text-sm text-stone-500">Enter 4-char code from Kiosk.</p>
+            <div className="flex gap-2 mt-4">
+              <input value={code} onChange={e=>setCode(e.target.value.toUpperCase())} onKeyDown={e=>e.key==='Enter'&&lookup()}
+                placeholder="A3X9" maxLength={4}
+                className="flex-1 tracking-[0.3em] font-mono text-xl font-bold uppercase text-center border border-stone-300 rounded-full px-4 py-3 focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10" />
+              <button onClick={lookup} className="bg-stone-900 text-white rounded-full px-6 flex items-center gap-2 font-semibold hover:bg-stone-800"><Search size={16}/> Lookup</button>
+            </div>
+            {error && <div className="mt-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{error}</div>}
+            {result && (
+              <div className="mt-5 fork-card rounded-2xl p-4 bg-stone-50/50">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-2xl font-bold tracking-widest text-stone-900">{result.order.pickup_code}</span>
+                  <span className={`text-xs font-semibold px-3 py-1.5 rounded-full border ${statusStyle[result.order.status]}`}>{result.order.status}</span>
+                </div>
+                <div className="text-sm mt-3 space-y-1.5">
+                  {result.items.map((it:any)=>(<div key={it.id} className="flex justify-between text-stone-700"><span>{it.menu_item_name} <span className="text-stone-500">×{it.quantity}</span></span><span className="font-medium">₱{it.subtotal}</span></div>))}
+                </div>
+                <div className="flex justify-between font-bold text-stone-900 border-t border-stone-200 mt-3 pt-3"><span>Total</span><span>₱{result.order.total_amount}</span></div>
+                <div className="grid grid-cols-2 gap-2 mt-4">
+                  {result.order.status==='PENDING_PAYMENT' && <button onClick={()=>updateStatus(result.order.id,'CONFIRMED')} className="col-span-2 bg-emerald-600 text-white font-semibold py-3 rounded-full hover:bg-emerald-700"><Banknote size={16} className="inline mr-2"/>Confirm Cash</button>}
+                  {result.order.status==='CONFIRMED' && <button onClick={()=>updateStatus(result.order.id,'PREPARING')} className="bg-violet-600 text-white font-semibold py-3 rounded-full">Preparing</button>}
+                  {result.order.status==='PREPARING' && <button onClick={()=>updateStatus(result.order.id,'READY')} className="bg-sky-600 text-white font-semibold py-3 rounded-full">Ready</button>}
+                  {result.order.status==='READY' && <button onClick={()=>updateStatus(result.order.id,'COMPLETED')} className="bg-stone-900 text-white font-semibold py-3 rounded-full"><CheckCircle size={16} className="inline mr-2"/>Completed</button>}
+                  {['PENDING_PAYMENT','CONFIRMED','PREPARING','READY'].includes(result.order.status) && <button onClick={()=>updateStatus(result.order.id,'CANCELLED')} className="border border-stone-200 text-stone-600 font-medium py-3 rounded-full hover:bg-stone-50">Cancel</button>}
+                  {result.order.status!=='PENDING_PAYMENT' && <button onClick={()=>window.print()} className="border border-stone-200 bg-white py-3 rounded-full flex items-center justify-center gap-2 font-medium"><Printer size={16}/> Print</button>}
+                </div>
               </div>
+            )}
+          </div>
+
+          {result && (
+            <div className="fork-card rounded-2xl p-5 font-mono text-sm">
+              <div className="text-center font-bold text-stone-900">CampusBITE Receipt</div>
+              <div className="text-center text-xs text-stone-500">Order {result.order.pickup_code} · {new Date(result.order.created_at).toLocaleString()}</div>
+              <div className="border-t border-dashed border-stone-200 my-3"/>
+              {result.items.map((it:any)=><div key={it.id} className="flex justify-between"><span>{it.menu_item_name} x{it.quantity}</span><span>₱{it.subtotal}</span></div>)}
+              <div className="border-t border-stone-900 my-3"/>
+              <div className="flex justify-between font-bold text-stone-900"><span>TOTAL</span><span>₱{result.order.total_amount}</span></div>
+              <div className="text-center text-xs text-stone-500 mt-3">Thank you!</div>
             </div>
           )}
         </div>
 
-        {/* Receipt preview */}
-        {result && (
-          <div className="bg-brand-100 rounded-2xl border border-brand-300/40 p-5 font-mono text-sm shadow-sm">
-            <div className="text-center font-black text-brand-700">CampusBITE Receipt</div>
-            <div className="text-center text-xs text-brand-700/60">Order {result.order.pickup_code} • {new Date(result.order.created_at).toLocaleString()}</div>
-            <hr className="my-3" />
-            {result.items.map((it:any)=><div key={it.id} className="flex justify-between"><span>{it.menu_item_name} x{it.quantity}</span><span>₱{it.subtotal}</span></div>)}
-            <hr className="my-3" />
-            <div className="flex justify-between font-black"><span>TOTAL</span><span>₱{result.order.total_amount}</span></div>
-            <div className="text-center text-xs mt-3 text-brand-700/60">Thank you! Show code at pickup.</div>
+        <div className="fork-card overflow-hidden">
+          <div className="px-5 py-4 border-b border-stone-100 flex items-center justify-between">
+            <h3 className="font-serif font-bold text-stone-900">Recent Orders</h3>
+            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"/> Live</span>
           </div>
-        )}
-      </div>
-
-      <div className="bg-brand-100 rounded-2xl border border-brand-300/40 shadow-sm">
-        <div className="p-4 border-b border-brand-300/30 flex items-center justify-between"><h3 className="font-bold text-brand-700">Recent Orders (Live via WebSocket)</h3><span className="text-xs bg-brand-300/30 text-brand-700 px-2 py-1 rounded-full">Live</span></div>
-        <div className="divide-y divide-brand-300/20 max-h-[70vh] overflow-auto">
-          {orders.map(o=>(
-            <div key={o.id} className="p-4 flex items-center gap-4 hover:bg-brand-300/50 cursor-pointer" onClick={()=>{ setCode(o.pickup_code); api.get<any>(`/api/orders/by-code/${o.pickup_code}`).then(setResult).catch(()=>{}); }}>
-              <div className="w-14 h-14 rounded-xl bg-brand-600 text-brand-100 flex items-center justify-center font-mono font-black tracking-widest shadow-sm">{o.pickup_code}</div>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-sm">₱{o.total_amount} • {new Date(o.created_at).toLocaleTimeString()}</div>
-                <div className="text-xs text-brand-700/60 truncate">{o.id.slice(0,8)}</div>
+          <div className="divide-y divide-stone-100 max-h-[70vh] overflow-auto">
+            {orders.map(o=>(
+              <div key={o.id} className="p-4 flex items-center gap-4 hover:bg-stone-50 cursor-pointer transition" onClick={()=>{ setCode(o.pickup_code); api.get<any>(`/api/orders/by-code/${o.pickup_code}`).then(setResult).catch(()=>{}); }}>
+                <div className="w-12 h-12 rounded-xl bg-stone-900 text-white flex items-center justify-center font-mono font-bold tracking-widest text-sm">{o.pickup_code}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-sm text-stone-900">₱{o.total_amount} · {new Date(o.created_at).toLocaleTimeString()}</div>
+                  <div className="text-xs text-stone-500 truncate">{o.stall_id} · {o.id.slice(0,8)}</div>
+                </div>
+                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${statusStyle[o.status]}`}>{o.status}</span>
               </div>
-              <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${statusColor[o.status]}`}>{o.status}</span>
-            </div>
-          ))}
-          {orders.length===0 && <div className="p-10 text-center text-brand-700/50 text-sm">No orders yet — place one from Kiosk</div>}
+            ))}
+            {orders.length===0 && <div className="p-10 text-center text-stone-400 text-sm">No orders yet — place one from Kiosk</div>}
+          </div>
         </div>
       </div>
-    </div>
     </div>
   );
 }

@@ -1,63 +1,52 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;500;600;700&family=DM+Sans:wght@500;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-* { font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
-
-/* Theme: only #432818 #BB9457 #FFE6A7 #DDA15E #BC6C25 - no white */
+/* The Fork — Warm, editorial, card-first */
 :root {
-  --tw-ring-offset-color: #FFE6A7;
-  --tw-ring-color: rgb(67 40 24 / 0.5); /* #432818 */
-}
-*, ::before, ::after {
-  border-color: #BB9457; /* default border within palette */
-}
-input::placeholder, textarea::placeholder,
-input::-moz-placeholder, textarea::-moz-placeholder {
-  color: #BB9457;
-  opacity: 1;
+  --font-serif: "Cormorant Garamond", ui-serif, Georgia, serif;
+  --font-sans: "Inter", "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --stone-900: #1C1917;
+  --stone-700: #44403C;
+  --stone-500: #78716C;
+  --stone-200: #E7E5E4;
+  --stone-100: #F5F5F4;
+  --stone-50: #FAFAF9;
+  --fork-green: #0F4C4A;
+  --fork-green-soft: #E6F2F0;
+  --cb-orange: #EA580C;
 }
 
-/* Force all 5 palette hexes to appear in built CSS (for purge) */
-.palette-432818 { color: #432818; }
-.palette-BB9457 { color: #BB9457; }
-.palette-FFE6A7 { color: #FFE6A7; }
-.palette-DDA15E { color: #DDA15E; }
-.palette-BC6C25 { color: #BC6C25; }
+* { font-family: var(--font-sans); }
+h1, h2, h3, .font-serif { font-family: var(--font-serif); letter-spacing: -0.02em; }
 
-/* Theme */
-body { background-color: #FFE6A7; color: #432818; }
-::selection { background: #432818; color: #FFE6A7; }
+/* Page */
+body { background: #FAFAF9; color: #1C1917; -webkit-font-smoothing: antialiased; }
+::selection { background: #1C1917; color: #FAFAF9; }
 
-/* Simple scrollbar - palette only */
+/* Cards — The Fork: soft border, subtle shadow */
+.fork-card {
+  background: white;
+  border: 1px solid #E7E5E4;
+  box-shadow: 0 2px 16px rgba(28,25,23,0.06), 0 1px 3px rgba(28,25,23,0.04);
+}
+.fork-card:hover { box-shadow: 0 8px 24px rgba(28,25,23,0.08), 0 4px 8px rgba(28,25,23,0.04); }
+
+/* Scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-thumb { background: #BB9457; border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: #432818; }
-::-webkit-scrollbar-track { background: #FFE6A7; }
+::-webkit-scrollbar-thumb { background: #D6D3D1; border-radius: 99px; }
+::-webkit-scrollbar-track { background: transparent; }
 
-/* === Responsive: iPhone 17 Pro Max / 16 / Android / Tablet / Laptop === */
-/* Safe area for iPhone notch / Dynamic Island */
-:root {
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --safe-left: env(safe-area-inset-left, 0px);
-  --safe-right: env(safe-area-inset-right, 0px);
-}
+/* Safe area + responsive */
+:root { --safe-top: env(safe-area-inset-top, 0px); --safe-bottom: env(safe-area-inset-bottom, 0px); }
 .pb-safe { padding-bottom: max(0.75rem, env(safe-area-inset-bottom)); }
-.pt-safe { padding-top: env(safe-area-inset-top); }
 .header-safe { padding-top: env(safe-area-inset-top); }
-
-/* Touch targets: minimum 44px for mobile (iOS HIG) */
 @media (max-width: 768px) {
   button, a { min-height: 44px; }
-  input, select, textarea { font-size: 16px !important; } /* prevent iOS zoom */
+  input, select, textarea { font-size: 16px !important; }
 }
-
-/* Improve tap highlight */
-* { -webkit-tap-highlight-color: rgba(67, 40, 24, 0.15); }
-
-/* Responsive images - never overflow */
+* { -webkit-tap-highlight-color: rgba(12,75,72,0.12); }
 img { max-width: 100%; height: auto; }
-
-/* Smooth scrolling for anchor links */
 html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }

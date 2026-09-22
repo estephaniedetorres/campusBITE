@@ -4,29 +4,38 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Theme: only #432818 #BB9457 #FFE6A7 #DDA15E #BC6C25 - no white
-        brand: {
-          50: '#FFE6A7',
-          100: '#FFE6A7',  // lightest - main bg
-          200: '#FFE6A7',
-          300: '#DDA15E',  // light golden - borders
-          400: '#BB9457',  // tan
-          500: '#BB9457',  // tan - secondary
-          600: '#BC6C25',  // rust - primary CTA / hover
-          700: '#432818',  // darkest - header/nav
-          800: '#432818',
-          900: '#432818',
+        stone: {
+          50: '#FAFAF9',
+          100: '#F5F5F4',
+          200: '#E7E5E4',
+          300: '#D6D3D1',
+          400: '#A8A29E',
+          500: '#78716C',
+          600: '#57534E',
+          700: '#44403C',
+          800: '#292524',
+          900: '#1C1917',
         },
-        cream: '#FFE6A7',
-        tan: '#BB9457',
-        gold: '#DDA15E',
-        rust: '#BC6C25',
-        ink: '#432818',
-        latte: '#DDA15E',
-        umber: '#BC6C25',
-        espresso: '#432818',
-        chocolate: '#BC6C25',
-        sienna: '#BB9457',
+        fork: {
+          green: '#0F4C4A',
+          greenSoft: '#E6F2F0',
+          greenDark: '#0A3330',
+        },
+        cb: {
+          orange: '#EA580C',
+          orangeSoft: '#FFF1E6',
+        }
+      },
+      fontFamily: {
+        serif: ['Cormorant Garamond', 'ui-serif', 'Georgia', 'serif'],
+        sans: ['Inter', 'DM Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      },
+      boxShadow: {
+        fork: '0 2px 16px rgba(28,25,23,0.06), 0 1px 3px rgba(28,25,23,0.04)',
+        forkHover: '0 8px 24px rgba(28,25,23,0.08), 0 4px 8px rgba(28,25,23,0.04)',
+      },
+      borderRadius: {
+        '4xl': '28px',
       }
     }
   },
