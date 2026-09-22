@@ -12,12 +12,14 @@ import { api } from './lib/api';
 
 function Home() {
   const [stalls, setStalls] = useState<any[]>([]);
-  useEffect(() => { api.get<any[]>('/api/stalls').then(setStalls).catch(()=>{}); }, []);
+  const [health, setHealth] = useState<any>(null);
+  useEffect(() => { api.get<any[]>('/api/stalls').then(setStalls).catch(()=>{}); api.get<any>('/api/health').then(setHealth).catch(()=>{}); }, []);
   const matees = stalls.find(s=> s.id==='stall-002' || s.name==='Matees');
   const potato = stalls.find(s=> s.id==='stall-001' || s.name==='Potato Corner');
-  // Real ratings from DB, no hardcode
+  // Real ratings from DB, no hardcode + dynamic hotspot IP (not hardcoded 192.168.43.1)
   const mateesRating = matees?.rating != null ? Number(matees.rating).toFixed(1) : '—';
   const potatoRating = potato?.rating != null ? Number(potato.rating).toFixed(1) : '—';
+  const hotspotHost = health?.ip ? `${health.ip}:${health.port}` : (typeof window !== 'undefined' ? window.location.host : '10.189.1.243:3000');
   return (
     <div className="space-y-6">
       {/* Hero — Promotional, The Fork style */}
@@ -29,7 +31,7 @@ function Home() {
             <p className="mt-4 text-sm sm:text-base text-stone-600 max-w-lg leading-relaxed">Ice cream from Matees. Famous fries from Potato Corner. Scan, order, pick up.</p>
             <div className="mt-6 flex flex-wrap gap-3">
               <a href="/kiosk" className="inline-flex items-center justify-center bg-stone-900 text-white px-6 py-3 rounded-full font-semibold hover:bg-stone-800">Order now</a>
-              <span className="inline-flex items-center gap-2 text-xs text-stone-500 px-3 py-3"><MapPin size={14}/> Hotspot: 192.168.43.1:3000 · <Clock size={14}/> 10-15 min</span>
+              <span className="inline-flex items-center gap-2 text-xs text-stone-500 px-3 py-3"><MapPin size={14}/> Hotspot: {hotspotHost} · <Clock size={14}/> 10-15 min</span>
             </div>
             <div className="mt-6 flex items-center gap-4 text-xs">
               <span className="flex items-center gap-1.5 font-medium text-stone-700"><Star size={14} className="text-amber-400 fill-amber-400"/> {mateesRating} Matees</span>
