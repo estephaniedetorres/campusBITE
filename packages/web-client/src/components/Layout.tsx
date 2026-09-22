@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ShoppingBag, Store, ChefHat, Boxes, Wifi, Activity, LogIn, LogOut, Shield, Menu, X } from 'lucide-react';
+import { ShoppingBag, Store, ChefHat, Boxes, Wifi, LogIn, LogOut, Shield, Menu, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
@@ -34,7 +34,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <img src="/CampusBITE_Logo.png" alt="CampusBITE Logo" className="w-9 h-9 rounded-xl object-contain shrink-0" />
             <div className="min-w-0">
               <div className="font-serif font-bold leading-none text-stone-900 text-[18px] tracking-tight">CampusBITE</div>
-              <div className="text-[11px] text-stone-500 -mt-0.5 hidden sm:block tracking-wide">Canteen OS · Offline-first</div>
+              <div className="text-[11px] text-stone-500 -mt-0.5 hidden sm:block tracking-wide">Canteen</div>
             </div>
           </Link>
 
@@ -86,15 +86,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 );
               })}
             </div>
-            {!user && <Link to="/login" onClick={()=>setMenuOpen(false)} className="mt-3 flex items-center justify-center gap-2 w-full py-3 rounded-2xl bg-fork-green text-white font-semibold"><LogIn size={16}/> Log in — staff only</Link>}
+            {!user && <Link to="/login" onClick={()=>setMenuOpen(false)} className="mt-3 flex items-center justify-center gap-2 w-full py-3 rounded-2xl bg-fork-green text-white font-semibold"><LogIn size={16}/> Log in</Link>}
           </div>
         )}
 
         {health && (
           <div className="bg-stone-900 text-stone-100 text-xs px-4 py-2 flex items-center gap-4 overflow-x-auto">
             <span className="flex items-center gap-1.5 whitespace-nowrap"><span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"/> {health.ip}:{health.port}</span>
-            <span className="hidden sm:flex items-center gap-1.5 text-stone-400 whitespace-nowrap"><Wifi size={12}/> Hotspot</span>
-            <span className="text-stone-400 ml-auto hidden lg:inline truncate">Offline LAN · {health.ip}:{health.port} — connect all devices to same hotspot</span>
+            <span className="hidden sm:flex items-center gap-1.5 text-stone-400 whitespace-nowrap"><Wifi size={12}/> Live</span>
+            <span className="text-stone-400 ml-auto hidden lg:inline truncate">{health.ip}:{health.port}</span>
           </div>
         )}
       </header>
@@ -104,7 +104,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <footer className="border-t border-stone-100 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-stone-500">
           <span className="font-serif text-stone-900 font-semibold">CampusBITE</span>
-          <span>Offline-first · SQLite WAL · WebSockets · Foreground Service</span>
+          <span>© CampusBITE</span>
         </div>
       </footer>
     </div>

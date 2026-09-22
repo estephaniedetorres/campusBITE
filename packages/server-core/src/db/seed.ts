@@ -1,10 +1,13 @@
 import { db } from './database.js';
 import { v4 as uuidv4 } from 'uuid';
 
-function upsertStall(id: string, name: string, desc: string, logoUrl?: string) {
-  db.prepare(`INSERT INTO stalls (id, name, description, logo_url) VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, description=excluded.description, logo_url=COALESCE(excluded.logo_url, stalls.logo_url)`).run(id, name, desc, logoUrl || null);
+function upsertStall(id: string, name: string, desc: string, logoUrl?: string, rating?: number, ratingCount?: number) {
+  db.prepare(`INSERT INTO stalls (id, name, description, logo_url, rating, rating_count) VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, description=excluded.description, logo_url=COALESCE(excluded.logo_url, stalls.logo_url), rating=COALESCE(excluded.rating, stalls.rating), rating_count=COALESCE(excluded.rating_count, stalls.rating_count)`).run(id, name, desc, logoUrl || null, rating ?? 4.8, ratingCount ?? 128);
   if (logoUrl) {
     try { db.prepare(`UPDATE stalls SET logo_url=? WHERE id=? AND (logo_url IS NULL OR logo_url='')`).run(logoUrl, id); } catch {}
+  }
+  if (rating !== undefined) {
+    try { db.prepare(`UPDATE stalls SET rating=?, rating_count=? WHERE id=?`).run(rating, ratingCount ?? 128, id); } catch {}
   }
 }
 function upsertCategory(id: string, stallId: string, name: string, order: number) {
@@ -14,8 +17,8 @@ function upsertIngredient(id: string, name: string, unit: string, stock: number,
   db.prepare(`INSERT OR IGNORE INTO ingredients (id, name, unit, current_stock, min_threshold, cost_per_unit) VALUES (?,?,?,?,?,?)`)
     .run(id, name, unit, stock, threshold, cost);
 }
-function upsertMenuItem(id: string, stallId: string, catId: string, name: string, price: number, desc: string, imageUrl?: string) {
-  db.prepare(`INSERT INTO menu_items (id, stall_id, category_id, name, price, description, image_url) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, price=excluded.price, description=excluded.description, image_url=excluded.image_url, stall_id=excluded.stall_id, category_id=excluded.category_id`).run(id, stallId, catId, name, price, desc, imageUrl || null);
+function upsertMenuItem(id: string, stallId: string, catId: string, name: string, price: number, desc: string, imageUrl?: string, rating?: number, ratingCount?: number) {
+  db.prepare(`INSERT INTO menu_items (id, stall_id, category_id, name, price, description, image_url, rating, rating_count) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, price=excluded.price, description=excluded.description, image_url=excluded.image_url, stall_id=excluded.stall_id, category_id=excluded.category_id, rating=COALESCE(excluded.rating, menu_items.rating), rating_count=COALESCE(excluded.rating_count, menu_items.rating_count)`).run(id, stallId, catId, name, price, desc, imageUrl || null, rating ?? 4.9, ratingCount ?? 56);
 }
 function upsertBom(menuItemId: string, ingredientId: string, qty: number) {
   db.prepare(`INSERT OR IGNORE INTO recipe_bom (id, menu_item_id, ingredient_id, quantity_required) VALUES (?,?,?,?)`)
@@ -27,8 +30,8 @@ console.log('[Seed] Seeding CampusBITE...');
 const stall1 = 'stall-001';
 const stall2 = 'stall-002';
 // Per clarification: grill->Potato Corner (stall-001), brew->Matees (stall-002)
-upsertStall(stall1, 'Potato Corner', 'World Famous Flavored Fries · Loaded Fries', 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=200&auto=format&fit=crop&q=60');
-upsertStall(stall2, 'Matees', 'Ice Cream · Sundaes · Milkshakes', 'https://images.unsplash.com/photo-1488900128323-21503983a07e?w=200&auto=format&fit=crop&q=60');
+upsertStall(stall1, 'Potato Corner', 'World Famous Flavored Fries · Loaded Fries', 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=200&auto=format&fit=crop&q=60', 4.8, 210);
+upsertStall(stall2, 'Matees', 'Ice Cream · Sundaes · Milkshakes', 'https://images.unsplash.com/photo-1488900128323-21503983a07e?w=200&auto=format&fit=crop&q=60', 4.7, 156);
 
 const catIceClassic = 'cat-ice-classic';
 const catIceSundae = 'cat-ice-sundae';
@@ -61,12 +64,12 @@ upsertIngredient('ing-patty', 'Beef Patty', 'pcs', 80, 15, 25);
 upsertIngredient('ing-cheese', 'Cheese Slice', 'pcs', 120, 20, 8);
 
 // Menu Items — swapped per brew->Matees (stall-002), grill->Potato Corner (stall-001)
-upsertMenuItem('item-vanilla-scoop', stall2, catIceClassic, 'Vanilla Scoop', 45, 'Single scoop Madagascar vanilla', 'https://images.unsplash.com/photo-1495147466023-a36482277724?w=500&auto=format&fit=crop&q=60');
-upsertMenuItem('item-choco-scoop', stall2, catIceClassic, 'Choco Scoop', 49, 'Belgian chocolate', 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=500&auto=format&fit=crop&q=60');
-upsertMenuItem('item-strawberry-sundae', stall2, catIceSundae, 'Strawberry Sundae', 89, '2 scoops + strawberry sauce + cream', 'https://images.unsplash.com/photo-1488900128323-21503983a07e?w=500&auto=format&fit=crop&q=60');
-upsertMenuItem('item-plain-fries', stall1, catFriesClassic, 'Plain Fries', 55, 'Crispy classic fries 150g', 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=500&auto=format&fit=crop&q=60');
-upsertMenuItem('item-cheese-fries', stall1, catFriesClassic, 'Cheese Fries', 69, 'Fries + cheese powder', 'https://images.unsplash.com/photo-1585109649139-366815a0d713?w=500&auto=format&fit=crop&q=60');
-upsertMenuItem('item-loaded-fries', stall1, catFriesLoaded, 'Loaded Chili Cheese Fries', 99, 'Fries + chili cheese + sour cream', 'https://images.unsplash.com/photo-1630384060421-c342d74f260f?w=500&auto=format&fit=crop&q=60');
+upsertMenuItem('item-vanilla-scoop', stall2, catIceClassic, 'Vanilla Scoop', 45, 'Single scoop Madagascar vanilla', 'https://images.unsplash.com/photo-1495147466023-a36482277724?w=500&auto=format&fit=crop&q=60', 4.9, 89);
+upsertMenuItem('item-choco-scoop', stall2, catIceClassic, 'Choco Scoop', 49, 'Belgian chocolate', 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=500&auto=format&fit=crop&q=60', 4.8, 72);
+upsertMenuItem('item-strawberry-sundae', stall2, catIceSundae, 'Strawberry Sundae', 89, '2 scoops + strawberry sauce + cream', 'https://images.unsplash.com/photo-1488900128323-21503983a07e?w=500&auto=format&fit=crop&q=60', 4.9, 64);
+upsertMenuItem('item-plain-fries', stall1, catFriesClassic, 'Plain Fries', 55, 'Crispy classic fries 150g', 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=500&auto=format&fit=crop&q=60', 4.7, 142);
+upsertMenuItem('item-cheese-fries', stall1, catFriesClassic, 'Cheese Fries', 69, 'Fries + cheese powder', 'https://images.unsplash.com/photo-1585109649139-366815a0d713?w=500&auto=format&fit=crop&q=60', 4.8, 98);
+upsertMenuItem('item-loaded-fries', stall1, catFriesLoaded, 'Loaded Chili Cheese Fries', 99, 'Fries + chili cheese + sour cream', 'https://images.unsplash.com/photo-1630384060421-c342d74f260f?w=500&auto=format&fit=crop&q=60', 4.9, 76);
 // Clean legacy items for Matees/Potato demo — FK safe (delete BOM → order_items → menu)
 try { db.prepare(`DELETE FROM recipe_bom WHERE menu_item_id IN ('item-burger-classic','item-burger-double','item-rice-chicken','item-coffee-latte','item-milk-tea','item-croissant')`).run(); } catch {}
 try { db.prepare(`DELETE FROM order_items WHERE menu_item_id IN ('item-burger-classic','item-burger-double','item-rice-chicken','item-coffee-latte','item-milk-tea','item-croissant')`).run(); } catch {}

@@ -24,9 +24,9 @@ export default function KdsPage() {
     return (
       <div className="max-w-lg mx-auto fork-card rounded-[24px] p-8 text-center">
         <Shield size={28} className="mx-auto text-stone-300" />
-        <h2 className="font-serif font-bold text-lg mt-3 text-stone-900">Kitchen — Staff only</h2>
-        <p className="text-sm text-stone-500 mt-2">KDS shows live tickets. Kiosk is the only public page.</p>
-        <Link to="/login" className="inline-flex items-center justify-center gap-2 mt-5 bg-stone-900 text-white px-6 py-3 rounded-full font-semibold"><LogIn size={16}/> Log in to Kitchen</Link>
+        <h2 className="font-serif font-bold text-lg mt-3 text-stone-900">Kitchen</h2>
+        <p className="text-sm text-stone-500 mt-2">Login required</p>
+        <Link to="/login" className="inline-flex items-center justify-center gap-2 mt-5 bg-stone-900 text-white px-6 py-3 rounded-full font-semibold"><LogIn size={16}/> Login</Link>
       </div>
     );
   }

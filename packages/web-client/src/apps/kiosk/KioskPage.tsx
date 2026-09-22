@@ -4,7 +4,7 @@ import { api } from '../../lib/api';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { ShoppingCart, Plus, Minus, Star, Clock, QrCode, Heart } from 'lucide-react';
 
-type MenuItem = { id: string; name: string; price: number; description: string; stall_id: string; category_id: string; image_url?: string | null; category_name?: string; };
+type MenuItem = { id: string; name: string; price: number; description: string; stall_id: string; category_id: string; image_url?: string | null; category_name?: string; rating?: number; rating_count?: number; };
 
 const fallbackImages: Record<string, string> = {
   'item-burger-classic': 'https://images.unsplash.com/photo-1568909344668-6f14a07b56a0?w=400&auto=format&fit=crop&q=60',
@@ -108,8 +108,7 @@ export default function KioskPage() {
         <div className="fork-card rounded-2xl p-3.5 flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-fork-green text-white flex items-center justify-center shrink-0"><QrCode size={18}/></div>
           <div className="flex-1 min-w-0">
-            <div className="font-serif font-bold text-sm text-stone-900">{stalls.find(s=>s.id===qrStall)?.name || `Stall ${qrStall}`} {qrTable && `· Table ${qrTable}`}</div>
-            <div className="text-xs text-stone-500 truncate">Scanned via QR — showing this stall</div>
+            <div className="font-serif font-bold text-sm text-stone-900">{stalls.find(s=>s.id===qrStall)?.name || qrStall} {qrTable && `· Table ${qrTable}`}</div>
           </div>
           <span className="hidden sm:inline text-xs font-medium px-3 py-1.5 rounded-full bg-fork-greenSoft text-fork-green border border-fork-green/10">QR</span>
         </div>
@@ -143,13 +142,14 @@ export default function KioskPage() {
             <div className="absolute bottom-4 left-5 right-5 flex items-end justify-between">
               <div className="flex items-center gap-3">
                 {currentStall.logo_url && <img src={currentStall.logo_url} alt={currentStall.name} className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl object-cover border-2 border-white/20 bg-white" />}
-                <div>
-                  <h2 className="font-serif text-xl sm:text-2xl font-bold text-white tracking-tight">{currentStall.name}</h2>
-                  <div className="flex items-center gap-2 mt-1 text-xs text-white/80">
-                    <span className="inline-flex items-center gap-1 bg-white text-stone-900 px-2 py-1 rounded-full font-semibold"><Star size={12} fill="currentColor"/> 4.8</span>
-                    <span>· {currentStall.description || 'Canteen favourite'}</span>
-                  </div>
+              <div>
+                <h2 className="font-serif text-xl sm:text-2xl font-bold text-white tracking-tight">{currentStall.name}</h2>
+                <div className="flex items-center gap-2 mt-1 text-xs text-white/80">
+                  <span className="inline-flex items-center gap-1 bg-white text-stone-900 px-2 py-1 rounded-full font-semibold"><Star size={12} fill="currentColor"/> {(currentStall.rating ?? 4.8).toFixed(1)}</span>
+                  <span>· {currentStall.description || 'Canteen favourite'}</span>
+                  <span className="hidden sm:inline">· {currentStall.rating_count ?? 0} ratings</span>
                 </div>
+              </div>
               </div>
               <span className="hidden sm:inline-flex items-center gap-1 bg-white/15 backdrop-blur text-white px-3 py-1.5 rounded-full text-xs font-medium border border-white/20"><Clock size={12}/> 10-15 min</span>
             </div>
@@ -178,7 +178,7 @@ export default function KioskPage() {
                 <div className="font-serif font-bold text-stone-900 leading-tight line-clamp-1">{item.name}</div>
                 <div className="text-xs text-stone-500 line-clamp-2 mt-1 min-h-[32px]">{item.description}</div>
                 <div className="flex items-center justify-between mt-3">
-                  <span className="text-xs text-stone-500 flex items-center gap-1"><Star size={12} className="text-amber-400 fill-amber-400"/> 4.9 · {item.category_name || 'Popular'}</span>
+                  <span className="text-xs text-stone-500 flex items-center gap-1"><Star size={12} className="text-amber-400 fill-amber-400"/> {(item.rating ?? 4.9).toFixed(1)} · {item.category_name || 'Popular'} · {item.rating_count ?? 0}</span>
                   {qty === 0 ? (
                     <button onClick={()=>add(item.id)} className="w-9 h-9 rounded-full bg-stone-900 text-white flex items-center justify-center hover:bg-stone-800"><Plus size={16}/></button>
                   ) : (
@@ -199,7 +199,7 @@ export default function KioskPage() {
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
           <div className="flex-1 min-w-0">
             <div className="text-sm font-semibold text-stone-900 flex items-center gap-2"><ShoppingCart size={16}/> {cartItems.length} items · ₱{total.toFixed(2)} {currentStall && cartItems.length>0 && <span className="hidden sm:inline text-stone-500">· {currentStall.name}</span>}</div>
-            <div className="text-xs text-stone-500 truncate">{cartItems.map(i=>`${i.name} ×${i.qty}`).join(' · ') || 'Add items from one stall'}</div>
+            <div className="text-xs text-stone-500 truncate">{cartItems.map(i=>`${i.name} ×${i.qty}`).join(' · ') || 'Empty cart'}</div>
           </div>
           <button disabled={cartItems.length===0 || loading} onClick={checkout}
             className="shrink-0 bg-stone-900 disabled:bg-stone-200 disabled:text-stone-400 text-white font-semibold px-6 py-3 rounded-full">
@@ -210,7 +210,7 @@ export default function KioskPage() {
 
       {lastOrder && (
         <div className="fork-card rounded-2xl p-5 pb-6">
-          <h3 className="font-serif font-bold text-stone-900 flex items-center gap-2"><Clock size={16}/> Live tracker — {lastOrder.order.pickup_code}</h3>
+          <h3 className="font-serif font-bold text-stone-900 flex items-center gap-2"><Clock size={16}/> {lastOrder.order.pickup_code} · {liveStatus || lastOrder.order.status}</h3>
           <div className="flex gap-1.5 mt-4">
             {['PENDING_PAYMENT','CONFIRMED','PREPARING','READY','COMPLETED'].map(step => {
               const idx = ['PENDING_PAYMENT','CONFIRMED','PREPARING','READY','COMPLETED'].indexOf(liveStatus || lastOrder.order.status);
@@ -222,7 +222,6 @@ export default function KioskPage() {
           <div className="flex justify-between mt-2 text-[11px] font-medium text-stone-500">
             <span>Ordered</span><span>Confirmed</span><span>Preparing</span><span>Ready</span><span>Done</span>
           </div>
-          <div className="mt-3 text-xs text-stone-600 bg-stone-50 border border-stone-100 rounded-xl px-3 py-2">Show code <b className="text-stone-900">{lastOrder.order.pickup_code}</b> at POS to pay.</div>
         </div>
       )}
     </div>

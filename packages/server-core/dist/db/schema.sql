@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS stalls (
     name TEXT NOT NULL,
     description TEXT,
     logo_url TEXT,
+    rating REAL DEFAULT 4.8 CHECK(rating >= 0 AND rating <= 5),
+    rating_count INTEGER DEFAULT 128,
     is_active INTEGER DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -32,6 +34,8 @@ CREATE TABLE IF NOT EXISTS menu_items (
     description TEXT,
     price REAL NOT NULL CHECK(price >= 0),
     image_url TEXT,
+    rating REAL DEFAULT 4.9 CHECK(rating >= 0 AND rating <= 5),
+    rating_count INTEGER DEFAULT 56,
     is_available INTEGER DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(stall_id) REFERENCES stalls(id) ON DELETE CASCADE,

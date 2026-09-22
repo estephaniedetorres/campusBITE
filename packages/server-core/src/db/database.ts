@@ -112,7 +112,7 @@ if (!schema) {
 }
 rawDb.exec(schema);
 
-// --- MIGRATIONS: image_url + stalls.logo_url (Termux old DBs) ---
+// --- MIGRATIONS: image_url + stalls.logo_url + ratings (Termux old DBs) ---
 try {
   const cols: any[] = rawDb.prepare(`PRAGMA table_info(menu_items)`).all();
   const hasImageUrl = cols.some((c: any) => c.name === 'image_url');
@@ -120,8 +120,14 @@ try {
     console.log('[DB] Migrating: adding menu_items.image_url');
     rawDb.exec(`ALTER TABLE menu_items ADD COLUMN image_url TEXT`);
   }
+  const hasRating = cols.some((c: any) => c.name === 'rating');
+  if (!hasRating) {
+    console.log('[DB] Migrating: adding menu_items.rating');
+    rawDb.exec(`ALTER TABLE menu_items ADD COLUMN rating REAL DEFAULT 4.9`);
+    rawDb.exec(`ALTER TABLE menu_items ADD COLUMN rating_count INTEGER DEFAULT 56`);
+  }
 } catch (e: any) {
-  console.log('[DB] Migration image_url:', e.message?.slice(0,120));
+  console.log('[DB] Migration image_url/rating:', e.message?.slice(0,120));
 }
 try {
   const cols: any[] = rawDb.prepare(`PRAGMA table_info(stalls)`).all();
@@ -130,8 +136,14 @@ try {
     console.log('[DB] Migrating: adding stalls.logo_url');
     rawDb.exec(`ALTER TABLE stalls ADD COLUMN logo_url TEXT`);
   }
+  const hasStallRating = cols.some((c: any) => c.name === 'rating');
+  if (!hasStallRating) {
+    console.log('[DB] Migrating: adding stalls.rating');
+    rawDb.exec(`ALTER TABLE stalls ADD COLUMN rating REAL DEFAULT 4.8`);
+    rawDb.exec(`ALTER TABLE stalls ADD COLUMN rating_count INTEGER DEFAULT 128`);
+  }
 } catch (e: any) {
-  console.log('[DB] Migration logo_url:', e.message?.slice(0,120));
+  console.log('[DB] Migration logo_url/rating:', e.message?.slice(0,120));
 }
 
 // --- AUTO-SEED: if stalls empty (fresh Termux DB), seed minimal data ---

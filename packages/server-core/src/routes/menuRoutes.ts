@@ -85,14 +85,14 @@ function enforceStallAccess(req: any, res: any, stallId: string): boolean {
   return true;
 }
 
-// ---- STALLS ---- (ADMIN only)
+// ---- STALLS ---- (ADMIN only) — ratings in stalls table
 menuRouter.post('/stalls', requireAuth, requireAdmin, (req, res) => {
-  const schema = z.object({ id: z.string().optional(), name: z.string().min(1), description: z.string().optional() });
+  const schema = z.object({ id: z.string().optional(), name: z.string().min(1), description: z.string().optional(), logoUrl: z.string().optional().nullable(), rating: z.number().min(0).max(5).optional(), ratingCount: z.number().int().nonnegative().optional() });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
   const id = parsed.data.id || `stall-${uuidv4().slice(0, 6)}`;
   try {
-    db.prepare(`INSERT INTO stalls (id, name, description) VALUES (?,?,?)`).run(id, parsed.data.name, parsed.data.description || null);
+    db.prepare(`INSERT INTO stalls (id, name, description, logo_url, rating, rating_count) VALUES (?,?,?,?,?,?)`).run(id, parsed.data.name, parsed.data.description || null, parsed.data.logoUrl || null, parsed.data.rating ?? 4.8, parsed.data.ratingCount ?? 128);
     res.status(201).json(db.prepare(`SELECT * FROM stalls WHERE id=?`).get(id));
   } catch (e: any) { res.status(409).json({ error: e.message }); }
 });
@@ -100,11 +100,12 @@ menuRouter.post('/stalls', requireAuth, requireAdmin, (req, res) => {
 menuRouter.patch('/stalls/:id', requireAuth, requireAdmin, (req, res) => {
   const existing = db.prepare(`SELECT * FROM stalls WHERE id=?`).get(req.params.id) as any;
   if (!existing) return res.status(404).json({ error: 'Stall not found' });
-  const schema = z.object({ name: z.string().min(1).optional(), description: z.string().optional(), is_active: z.number().int().min(0).max(1).optional() });
+  const schema = z.object({ name: z.string().min(1).optional(), description: z.string().optional(), logoUrl: z.string().optional().nullable(), rating: z.number().min(0).max(5).optional(), ratingCount: z.number().int().nonnegative().optional(), is_active: z.number().int().min(0).max(1).optional() });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
+  const map: Record<string,string> = { name:'name', description:'description', logoUrl:'logo_url', rating:'rating', ratingCount:'rating_count', is_active:'is_active' };
   const fields: string[] = []; const vals: any[] = [];
-  for (const [k, v] of Object.entries(parsed.data)) { fields.push(`${k}=?`); vals.push(v); }
+  for (const [k, v] of Object.entries(parsed.data)) { if (v!==undefined) { fields.push(`${map[k]}=?`); vals.push(v); } }
   if (fields.length === 0) return res.json(existing);
   vals.push(req.params.id);
   db.prepare(`UPDATE stalls SET ${fields.join(',')} WHERE id=?`).run(...vals);
@@ -158,7 +159,7 @@ menuRouter.delete('/categories/:id', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
-// ---- MENU ITEMS ---- (ADMIN any stall, STALL_OWNER own stall)
+// ---- MENU ITEMS ---- (ADMIN any stall, STALL_OWNER own stall) — ratings per item
 menuRouter.post('/menu', requireAuth, (req, res) => {
   const schema = z.object({
     stallId: z.string().min(1),
@@ -167,6 +168,8 @@ menuRouter.post('/menu', requireAuth, (req, res) => {
     description: z.string().optional(),
     price: z.number().nonnegative(),
     imageUrl: z.string().optional().nullable(),
+    rating: z.number().min(0).max(5).optional(),
+    ratingCount: z.number().int().nonnegative().optional(),
     isAvailable: z.number().int().min(0).max(1).optional(),
   });
   const parsed = schema.safeParse(req.body);
@@ -179,8 +182,8 @@ menuRouter.post('/menu', requireAuth, (req, res) => {
   if (cat.stall_id !== d.stallId) return res.status(400).json({ error: 'Category does not belong to stall ' + d.stallId });
   const id = `item-${uuidv4().slice(0, 8)}`;
   try {
-    db.prepare(`INSERT INTO menu_items (id, stall_id, category_id, name, description, price, image_url, is_available) VALUES (?,?,?,?,?,?,?,?)`)
-      .run(id, d.stallId, d.categoryId, d.name, d.description || null, d.price, d.imageUrl || null, d.isAvailable ?? 1);
+    db.prepare(`INSERT INTO menu_items (id, stall_id, category_id, name, description, price, image_url, rating, rating_count, is_available) VALUES (?,?,?,?,?,?,?,?,?,?)`)
+      .run(id, d.stallId, d.categoryId, d.name, d.description || null, d.price, d.imageUrl || null, (d as any).rating ?? 4.9, (d as any).ratingCount ?? 56, d.isAvailable ?? 1);
     res.status(201).json(db.prepare(`SELECT * FROM menu_items WHERE id=?`).get(id));
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -195,8 +198,10 @@ menuRouter.patch('/menu/:id', requireAuth, (req, res) => {
     price: z.number().nonnegative().optional(),
     categoryId: z.string().optional(),
     imageUrl: z.string().optional().nullable(),
+    rating: z.number().min(0).max(5).optional(),
+    ratingCount: z.number().int().nonnegative().optional(),
     isAvailable: z.number().int().min(0).max(1).optional(),
-    stallId: z.string().optional(), // allow moving stall (ADMIN only normally)
+    stallId: z.string().optional(),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
@@ -211,7 +216,7 @@ menuRouter.patch('/menu/:id', requireAuth, (req, res) => {
     const targetStall = parsed.data.stallId || existing.stall_id;
     if (cat.stall_id !== targetStall) return res.status(400).json({ error: 'Category does not belong to target stall' });
   }
-  const map: Record<string, string> = { name: 'name', description: 'description', price: 'price', categoryId: 'category_id', imageUrl: 'image_url', isAvailable: 'is_available', stallId: 'stall_id' };
+  const map: Record<string, string> = { name: 'name', description: 'description', price: 'price', categoryId: 'category_id', imageUrl: 'image_url', rating: 'rating', ratingCount: 'rating_count', isAvailable: 'is_available', stallId: 'stall_id' };
   const fields: string[] = []; const vals: any[] = [];
   for (const [k, v] of Object.entries(parsed.data)) {
     if (v !== undefined) { fields.push(`${map[k]}=?`); vals.push(v); }

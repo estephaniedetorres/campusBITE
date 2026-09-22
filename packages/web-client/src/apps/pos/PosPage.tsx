@@ -16,9 +16,9 @@ export default function PosPage() {
     return (
       <div className="max-w-lg mx-auto fork-card rounded-[24px] p-8 text-center">
         <Shield size={28} className="mx-auto text-stone-300" />
-        <h2 className="font-serif font-bold text-lg mt-3 text-stone-900">POS — Staff only</h2>
-        <p className="text-sm text-stone-500 mt-2">Kiosk is the only public page. POS requires login.<br/>Stall owners see own stall, ADMIN sees all.</p>
-        <Link to="/login" className="inline-flex items-center justify-center gap-2 mt-5 bg-stone-900 text-white px-6 py-3 rounded-full font-semibold"><LogIn size={16}/> Log in to POS</Link>
+        <h2 className="font-serif font-bold text-lg mt-3 text-stone-900">POS</h2>
+        <p className="text-sm text-stone-500 mt-2">Login required</p>
+        <Link to="/login" className="inline-flex items-center justify-center gap-2 mt-5 bg-stone-900 text-white px-6 py-3 rounded-full font-semibold"><LogIn size={16}/> Login</Link>
       </div>
     );
   }
@@ -69,14 +69,12 @@ export default function PosPage() {
           <div className="font-semibold text-sm text-stone-900">POS — {user.role==='ADMIN' ? 'All stalls' : user.stall_name}</div>
           <div className="text-xs text-stone-500">{user.display_name} · {user.role}</div>
         </div>
-        <span className="ml-auto hidden sm:inline text-xs px-3 py-1.5 rounded-full bg-stone-50 border border-stone-200 text-stone-600">Staff only</span>
       </div>
 
       <div className="grid lg:grid-cols-[400px_1fr] gap-6">
         <div className="space-y-4">
           <div className="fork-card rounded-[20px] p-5">
             <h2 className="font-serif font-bold text-stone-900">Cashier</h2>
-            <p className="text-sm text-stone-500">Enter 4-char code from Kiosk.</p>
             <div className="flex gap-2 mt-4">
               <input value={code} onChange={e=>setCode(e.target.value.toUpperCase())} onKeyDown={e=>e.key==='Enter'&&lookup()}
                 placeholder="A3X9" maxLength={4}
@@ -135,7 +133,7 @@ export default function PosPage() {
                 <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${statusStyle[o.status]}`}>{o.status}</span>
               </div>
             ))}
-            {orders.length===0 && <div className="p-10 text-center text-stone-400 text-sm">No orders yet — place one from Kiosk</div>}
+            {orders.length===0 && <div className="p-10 text-center text-stone-400 text-sm">No orders yet</div>}
           </div>
         </div>
       </div>

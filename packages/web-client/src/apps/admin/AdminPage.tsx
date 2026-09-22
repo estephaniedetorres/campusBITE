@@ -18,26 +18,14 @@ export default function AdminPage() {
           <Shield size={22} strokeWidth={1.75} />
         </div>
         <h2 className="font-serif font-bold text-xl text-stone-900 mt-4">Login required</h2>
-        <p className="text-sm text-stone-500 mt-2 leading-relaxed">
-          Menu editing uses <b className="font-semibold text-stone-900">Hybrid</b> access:{' '}
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-stone-900 text-white">ADMIN</span> manages all stalls & inventory,{' '}
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-fork-greenSoft text-fork-green border border-fork-green/10">STALL_OWNER</span> edits only own stall's menu.
-        </p>
+        <p className="text-sm text-stone-500 mt-2">Please login to continue</p>
         <div className="mt-6 flex gap-3 justify-center flex-wrap">
           <Link to="/login" className="bg-stone-900 text-white font-semibold px-6 py-3 rounded-full flex items-center gap-2 hover:bg-stone-800 transition shadow-sm">
-            <LogIn size={16} /> Login to Admin
+            <LogIn size={16} /> Login
           </Link>
           <Link to="/" className="bg-white border border-stone-200 px-6 py-3 rounded-full font-medium text-stone-700 hover:bg-stone-50 transition">
-            Go Home
+            Home
           </Link>
-        </div>
-        <div className="mt-6 text-xs text-stone-500 bg-stone-50 rounded-2xl p-4 text-left border border-stone-100">
-          <div className="font-serif font-bold text-stone-900 text-sm">Demo logins</div>
-          <div className="mt-2 space-y-1 font-mono text-[13px]">
-            <div><span className="font-semibold text-stone-900">admin</span> / admin123 — ADMIN (all)</div>
-            <div><span className="font-semibold text-stone-900">potato</span> / potato123 — Potato Corner — fries owner (stall-001)</div>
-            <div><span className="font-semibold text-stone-900">matees</span> / matees123 — Matees — ice cream owner (stall-002)</div>
-          </div>
         </div>
       </div>
     );
@@ -61,7 +49,6 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-6">
-      {/* Identity — The Fork, warm stone, card-first */}
       <div className="fork-card rounded-2xl p-4 flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl bg-stone-900 text-white flex items-center justify-center shrink-0">
           <Shield size={18} strokeWidth={1.8} />
@@ -76,16 +63,11 @@ export default function AdminPage() {
             <span className="text-xs font-medium text-stone-500">CampusBITE</span>
           </div>
           <div className="text-xs text-stone-500 truncate">
-            {isAdmin ? 'Can manage ALL stalls, inventory, BOM, audits & users' : `Stall: ${user.stall_name} (${user.stall_id}) — menu only`}
+            {isAdmin ? 'All stalls' : `${user.stall_name} · ${user.stall_id}`}
           </div>
-        </div>
-        <div className="ml-auto hidden md:block text-xs bg-stone-50 border border-stone-100 rounded-2xl px-3.5 py-2.5 shrink-0">
-          <div className="font-semibold text-stone-900">Hybrid Mode Active</div>
-          <div className="text-stone-500">ADMIN = full · STALL_OWNER = own stall menu</div>
         </div>
       </div>
 
-      {/* Tabs — pill, minimal, stone */}
       <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-none">
         {visibleTabs.map(t => {
           const Icon = t.i;
@@ -105,7 +87,6 @@ export default function AdminPage() {
             </button>
           );
         })}
-        {!isAdmin && <span className="ml-auto text-xs text-stone-400 py-2 hidden md:block whitespace-nowrap">Inventory / BOM / Audits hidden for stall owners</span>}
       </div>
 
       {tab === 'menu' && <MenuManagementTab />}
@@ -124,15 +105,13 @@ function AdminOnly() {
       <div className="w-12 h-12 rounded-2xl bg-stone-100 border border-stone-200 flex items-center justify-center mx-auto text-stone-400">
         <Shield size={22} />
       </div>
-      <div className="font-serif font-bold text-stone-900 mt-3">ADMIN only</div>
-      <p className="text-sm text-stone-500 mt-2 max-w-md mx-auto">
-        Stall owners edit menu only. Login as <code className="bg-stone-100 px-1.5 py-0.5 rounded text-stone-900 border border-stone-200">admin / admin123</code> for inventory, BOM, audits, analytics & users.
-      </p>
+      <div className="font-serif font-bold text-stone-900 mt-3">Restricted</div>
+      <p className="text-sm text-stone-500 mt-2">Admin access required</p>
     </div>
   );
 }
 
-// ============ MENU MANAGEMENT TAB (Hybrid) ============
+// ============ MENU MANAGEMENT TAB ============
 function MenuManagementTab() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
@@ -282,30 +261,13 @@ function MenuManagementTab() {
 
   return (
     <div className="space-y-5">
-      {/* Stalls */}
       <div className="fork-card rounded-2xl p-5 sm:p-6">
         <h3 className="font-serif font-bold text-stone-900 flex items-center gap-2 text-[15px]">
           <span className="w-8 h-8 rounded-xl bg-stone-900 text-white flex items-center justify-center">
             <Store size={14} />
           </span>
-          Stalls — who can edit what?
+          Stalls
         </h3>
-        <div className="grid md:grid-cols-2 gap-3 mt-4">
-          <div className="bg-stone-50 rounded-2xl p-4 border border-stone-100">
-            <div className="font-semibold text-sm text-stone-900 flex items-center gap-1.5">
-              <Shield size={14} className="text-stone-900" /> ADMIN
-            </div>
-            <div className="text-sm text-stone-500 mt-1 leading-relaxed">Create / edit / delete ANY stall, any category, any menu item in any stall.</div>
-          </div>
-          <div className="bg-white rounded-2xl p-4 border border-stone-200">
-            <div className="font-semibold text-sm text-stone-900 flex items-center gap-1.5">
-              <Utensils size={14} className="text-fork-green" /> STALL_OWNER
-            </div>
-            <div className="text-sm text-stone-500 mt-1 leading-relaxed">
-              Only stall <b className="text-stone-900 font-semibold">{user?.stall_name || user?.stall_id}</b>. Server returns 403 if they try other stall.
-            </div>
-          </div>
-        </div>
 
         <div className="flex gap-2 mt-4 flex-wrap">
           {visibleStalls.map(s => (
@@ -347,24 +309,19 @@ function MenuManagementTab() {
         {error && <div className="mt-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{error}</div>}
       </div>
 
-      {/* QR Generator — Phase 3 */}
       <div className="fork-card rounded-2xl p-5 sm:p-6">
         <h4 className="font-serif font-bold text-stone-900 flex items-center gap-2">
           <span className="w-8 h-8 rounded-xl bg-fork-green text-white flex items-center justify-center">
             <QrCode size={14} />
           </span>
-          Stall QR Codes — Customers scan to open Kiosk
+          QR Codes
         </h4>
-        <p className="text-xs text-stone-500 mt-2 leading-relaxed">
-          Offline QR: encodes <code className="bg-stone-100 border border-stone-200 px-1.5 py-0.5 rounded text-stone-900">http://&lt;hotspot-ip&gt;:3000/kiosk?stall=STALL_ID</code>. Print and post at stall front. Kiosk is the <b className="font-semibold text-stone-700">only public</b> page.
-        </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
           {visibleStalls.map((s: any) => {
             const ip = health?.ips?.[0] || (typeof window !== 'undefined' ? window.location.hostname : 'localhost');
             const port = health?.port || (typeof window !== 'undefined' ? window.location.port || '3000' : '3000');
             const host = ip && ip !== 'localhost' ? `${ip}:${port}` : typeof window !== 'undefined' ? window.location.host : `localhost:${port}`;
             const url = `http://${host}/kiosk?stall=${s.id}`;
-            const tableUrl = `http://${host}/kiosk?stall=${s.id}&table=1`;
             return (
               <div key={s.id} className="bg-white border border-stone-200 rounded-2xl p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
                 <div className="bg-white p-2 border border-stone-200 rounded-xl shrink-0 mx-auto sm:mx-0 shadow-sm">
@@ -373,9 +330,6 @@ function MenuManagementTab() {
                 <div className="flex-1 min-w-0 w-full">
                   <div className="font-serif font-bold text-sm text-stone-900 flex items-center gap-2">{s.logo_url ? <img src={s.logo_url} alt={s.name} className="w-6 h-6 rounded-full object-cover border border-stone-200" /> : null}{s.name}</div>
                   <div className="text-xs text-stone-500 break-all font-mono mt-1">{url}</div>
-                  <div className="text-xs text-stone-400 mt-1.5">
-                    Table example: <span className="font-mono bg-stone-50 border border-stone-100 px-1.5 py-0.5 rounded break-all text-stone-600">{tableUrl}</span>
-                  </div>
                   <div className="flex gap-2 mt-3">
                     <button
                       onClick={() => {
@@ -387,7 +341,7 @@ function MenuManagementTab() {
                       Copy URL
                     </button>
                     <button onClick={() => window.print()} className="text-xs font-semibold bg-stone-900 text-white px-4 py-2 rounded-full hover:bg-stone-800 transition">
-                      Print QR
+                      Print
                     </button>
                   </div>
                 </div>
@@ -395,11 +349,10 @@ function MenuManagementTab() {
             );
           })}
         </div>
-        {visibleStalls.length === 0 && <div className="text-sm text-stone-400 py-6 text-center">No stalls — add one above (ADMIN)</div>}
+        {visibleStalls.length === 0 && <div className="text-sm text-stone-400 py-6 text-center">No stalls</div>}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Categories */}
         <div className="fork-card rounded-2xl p-5 sm:p-6 flex flex-col">
           <h4 className="font-serif font-bold text-stone-900">Categories — {stalls.find(s => s.id === selectedStall)?.name || ''}</h4>
           <div className="space-y-2 mt-4 max-h-72 overflow-auto pr-1">
@@ -414,7 +367,7 @@ function MenuManagementTab() {
                 </button>
               </div>
             ))}
-            {categories.length === 0 && <div className="text-sm text-stone-400 py-8 text-center border border-dashed border-stone-200 rounded-2xl bg-stone-50/50">No categories — create one below</div>}
+            {categories.length === 0 && <div className="text-sm text-stone-400 py-8 text-center border border-dashed border-stone-200 rounded-2xl bg-stone-50/50">No categories</div>}
           </div>
           <div className="flex gap-2 mt-4">
             <input
@@ -436,7 +389,6 @@ function MenuManagementTab() {
           </div>
         </div>
 
-        {/* Add Menu Item */}
         <div className="fork-card rounded-2xl p-5 sm:p-6">
           <h4 className="font-serif font-bold text-stone-900">Add Menu Item — {stalls.find(s => s.id === selectedStall)?.name || ''}</h4>
           <div className="grid gap-3 mt-4">
@@ -502,11 +454,7 @@ function MenuManagementTab() {
                   Remove
                 </button>
               </div>
-            ) : (
-              <div className="flex items-center gap-2 text-xs text-stone-500 bg-stone-50 border border-dashed border-stone-200 rounded-xl px-3.5 py-3">
-                <ImageIcon size={14} className="text-stone-400 shrink-0" /> No image — Kiosk will show a real food photo fallback. Paste URL or Upload (max 2MB, stored as data URL for offline).
-              </div>
-            )}
+            ) : null}
             <div className="flex gap-2">
               <select
                 value={newItem.isAvailable}
@@ -514,24 +462,19 @@ function MenuManagementTab() {
                 className="bg-white border border-stone-200 rounded-full px-4 py-2.5 text-sm focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 text-stone-700"
               >
                 <option value="1">Available</option>
-                <option value="0">Hidden (Kiosk off)</option>
+                <option value="0">Hidden</option>
               </select>
               <button onClick={createItem} className="flex-1 bg-stone-900 text-white font-semibold py-2.5 rounded-full flex items-center justify-center gap-2 hover:bg-stone-800 transition">
                 <Plus size={16} /> Add Item
               </button>
             </div>
           </div>
-          <p className="text-xs text-stone-400 mt-3 leading-relaxed">Price non-negative. Stall ownership enforced server-side: STALL_OWNER gets 403 if stallId mismatch.</p>
         </div>
       </div>
 
-      {/* Menu Items table */}
       <div className="fork-card rounded-2xl overflow-hidden">
         <div className="p-5 border-b border-stone-100 flex items-center justify-between gap-3">
           <h4 className="font-serif font-bold text-stone-900">Menu Items — {menu.length} items</h4>
-          <span className="text-xs font-medium px-3 py-1 rounded-full bg-stone-50 border border-stone-200 text-stone-600 whitespace-nowrap">
-            {isAdmin ? 'ADMIN sees all in stall' : `Filtered to ${user?.stall_name}`}
-          </span>
         </div>
         <div className="overflow-auto">
           <table className="w-full text-sm min-w-[640px]">
@@ -605,7 +548,7 @@ function MenuManagementTab() {
             </tbody>
           </table>
         </div>
-        {menu.length === 0 && <div className="p-10 text-center text-sm text-stone-400">No menu items for this stall — add one above.</div>}
+        {menu.length === 0 && <div className="p-10 text-center text-sm text-stone-400">No items</div>}
       </div>
 
       {editingItem && (
@@ -673,11 +616,7 @@ function MenuManagementTab() {
                   }}
                 />
               </div>
-            ) : (
-              <div className="w-full h-24 rounded-xl border border-dashed border-stone-200 bg-stone-50 flex items-center justify-center text-xs text-stone-400 gap-2">
-                <ImageIcon size={16} className="text-stone-300" /> No image — will show fallback photo on Kiosk
-              </div>
-            )}
+            ) : null}
             <select
               value={String(editingItem.is_available)}
               onChange={e => setEditingItem({ ...editingItem, is_available: Number(e.target.value) })}
@@ -846,7 +785,7 @@ function BomTab() {
   return (
     <div className="space-y-5">
       <div className="fork-card rounded-2xl p-5 sm:p-6">
-        <h3 className="font-serif font-bold text-stone-900">Add Recipe BOM link</h3>
+        <h3 className="font-serif font-bold text-stone-900">Add Recipe BOM</h3>
         <div className="grid md:grid-cols-4 gap-3 mt-4">
           <select
             value={form.menuItemId}
@@ -880,10 +819,9 @@ function BomTab() {
             className="bg-white border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 placeholder:text-stone-400"
           />
           <button onClick={add} className="bg-stone-900 text-white rounded-full font-semibold hover:bg-stone-800 transition py-2.5">
-            Add BOM
+            Add
           </button>
         </div>
-        <p className="text-xs text-stone-400 mt-3 leading-relaxed">Example: Classic Burger → Beef Patty ×1 pcs. Atomic deduction multiplies by order quantity. ADMIN can edit any; STALL_OWNER filtered server-side to own stall.</p>
       </div>
 
       <div className="fork-card rounded-2xl overflow-hidden">
@@ -913,7 +851,7 @@ function BomTab() {
             </tbody>
           </table>
         </div>
-        {boms.length === 0 && <div className="p-10 text-center text-sm text-stone-400">No BOM links yet — create one above.</div>}
+        {boms.length === 0 && <div className="p-10 text-center text-sm text-stone-400">No BOMs</div>}
       </div>
     </div>
   );
@@ -951,9 +889,8 @@ function AuditTab() {
           <span className="w-8 h-8 rounded-xl bg-stone-900 text-white flex items-center justify-center">
             <ClipboardCheck size={14} />
           </span>
-          End-of-Day Variance Audit — ADMIN only
+          Audit
         </h3>
-        <p className="text-sm text-stone-500 mt-2">System computes variance = physical − expected. Positive = overage, negative = shrinkage. Adjustment auto-applied.</p>
         <div className="flex gap-3 mt-4 flex-wrap">
           <input
             type="date"
@@ -962,7 +899,7 @@ function AuditTab() {
             className="bg-white border border-stone-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 text-stone-700"
           />
           <button onClick={submit} className="bg-stone-900 text-white px-6 py-2.5 rounded-full font-semibold hover:bg-stone-800 transition">
-            Submit Audit
+            Submit
           </button>
         </div>
       </div>
@@ -1074,7 +1011,6 @@ function AnalyticsTab() {
         >
           Refresh
         </button>
-        <span className="ml-auto hidden sm:inline text-xs text-stone-400">CampusBITE analytics · offline-first</span>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -1162,7 +1098,7 @@ function UsersTab() {
           <span className="w-8 h-8 rounded-xl bg-stone-900 text-white flex items-center justify-center">
             <Users size={14} />
           </span>
-          Create User — ADMIN only
+          Create User
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mt-4">
           <input
@@ -1174,7 +1110,7 @@ function UsersTab() {
           <input
             value={form.pin}
             onChange={e => setForm({ ...form, pin: e.target.value })}
-            placeholder="PIN (e.g. potato123)"
+            placeholder="PIN"
             className="bg-white border border-stone-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10 placeholder:text-stone-400"
           />
           <input
