@@ -52,7 +52,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="flex items-center gap-2">
-            {user ? (
+            {user && (
               <>
                 <div className="hidden sm:block text-right">
                   <div className="text-sm font-medium leading-none text-stone-900 flex items-center justify-end gap-1.5"><Shield size={12} className={user.role==='ADMIN'?'text-stone-900':'text-orange-600'}/> {user.display_name}</div>
@@ -63,8 +63,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </button>
                 <button onClick={()=>{ logout(); navigate('/login'); }} className="sm:hidden w-9 h-9 rounded-full border border-stone-200 bg-white flex items-center justify-center text-stone-700"><LogOut size={16}/></button>
               </>
-            ) : (
-              <Link to="/login" className={`hidden lg:inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition ${loc.pathname==='/login'?'bg-stone-900 text-white':'bg-fork-green text-white hover:bg-fork-greenDark'}`}><LogIn size={16}/> Log in</Link>
             )}
             <button onClick={()=>setMenuOpen(!menuOpen)} className="lg:hidden w-9 h-9 rounded-full border border-stone-200 bg-white flex items-center justify-center text-stone-700">
               {menuOpen ? <X size={18}/> : <Menu size={18}/>}
@@ -86,7 +84,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 );
               })}
             </div>
-            {!user && <Link to="/login" onClick={()=>setMenuOpen(false)} className="mt-3 flex items-center justify-center gap-2 w-full py-3 rounded-2xl bg-fork-green text-white font-semibold"><LogIn size={16}/> Log in</Link>}
           </div>
         )}
 

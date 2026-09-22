@@ -90,6 +90,18 @@ function Home() {
         </div>
       </div>
 
+      {/* For Stall Owners — login only here */}
+      <div className="fork-card rounded-2xl p-6 border border-stone-200">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <div className="font-serif font-bold text-stone-900">For Stall Owners</div>
+            <div className="text-sm text-stone-500 mt-1">Manage your menu, prices, and stock. Log in to access POS, Kitchen, and Inventory for your stall.</div>
+            <div className="mt-2 text-xs text-stone-400">Demo: <span className="font-mono bg-stone-100 px-1.5 py-0.5 rounded">matees/matees123</span> (Matees) · <span className="font-mono bg-stone-100 px-1.5 py-0.5 rounded">potato/potato123</span> (Potato Corner) · <span className="font-mono bg-stone-100 px-1.5 py-0.5 rounded">admin/admin123</span> (all)</div>
+          </div>
+          <a href="/login" className="shrink-0 bg-stone-900 text-white px-6 py-3 rounded-full font-semibold hover:bg-stone-800">Stall Owner Log in</a>
+        </div>
+      </div>
+
     </div>
   );
 }
