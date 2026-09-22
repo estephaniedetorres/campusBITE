@@ -54,11 +54,11 @@ function Home() {
         </div>
       </div>
 
-      {/* Featured stalls — promo (links to general Kiosk, not stall-filtered) */}
+      {/* Featured stalls — display only, not links */}
       <div className="grid md:grid-cols-2 gap-4">
-        <a href="/kiosk" className="fork-card rounded-[20px] overflow-hidden group hover:shadow-forkHover transition">
+        <div className="fork-card rounded-[20px] overflow-hidden">
           <div className="h-36 relative">
-            <img src="https://images.unsplash.com/photo-1495147466023-a36482277724?w=600&auto=format&fit=crop&q=60" alt="Matees" className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.02] transition duration-500" />
+            <img src="https://images.unsplash.com/photo-1495147466023-a36482277724?w=600&auto=format&fit=crop&q=60" alt="Matees" className="absolute inset-0 w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
             <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between">
               <div>
@@ -68,14 +68,13 @@ function Home() {
               <span className="bg-white text-stone-900 text-xs font-bold px-2.5 py-1 rounded-full">{mateesRating} ★</span>
             </div>
           </div>
-          <div className="p-4 flex items-center justify-between">
+          <div className="p-4">
             <span className="text-sm text-stone-600">Vanilla · Choco · Strawberry Sundae</span>
-            <span className="text-sm font-semibold text-stone-900">View →</span>
           </div>
-        </a>
-        <a href="/kiosk" className="fork-card rounded-[20px] overflow-hidden group hover:shadow-forkHover transition">
+        </div>
+        <div className="fork-card rounded-[20px] overflow-hidden">
           <div className="h-36 relative">
-            <img src="https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=600&auto=format&fit=crop&q=60" alt="Potato Corner" className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.02] transition duration-500" />
+            <img src="https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=600&auto=format&fit=crop&q=60" alt="Potato Corner" className="absolute inset-0 w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
             <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between">
               <div>
@@ -85,11 +84,10 @@ function Home() {
               <span className="bg-white text-stone-900 text-xs font-bold px-2.5 py-1 rounded-full">{potatoRating} ★</span>
             </div>
           </div>
-          <div className="p-4 flex items-center justify-between">
+          <div className="p-4">
             <span className="text-sm text-stone-600">Plain · Cheese · Loaded Chili</span>
-            <span className="text-sm font-semibold text-stone-900">View →</span>
           </div>
-        </a>
+        </div>
       </div>
 
       <div className="fork-card rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
