@@ -7,3 +7,7 @@ packages/server-core/data
 phone-package/node-*.tar.xz
 phone-package/server-core-dist
 phone-package/web-client-dist
+.expo
+.expo-shared
+packages/mobile-server/.expo
+/tsconfig.json
