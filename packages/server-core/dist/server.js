@@ -32,9 +32,11 @@ function getIps() {
             if (a.family === 'IPv4' && !a.internal)
                 ips.push(a.address);
     }
+    // Termux fallback: hotspot IP may be 10.x or 192.168.43.x, not in os.networkInterfaces() due to netlink
+    if (ips.length === 0)
+        ips.push('192.168.43.1');
     return ips;
 }
-// Simple health — returns actual reachable IP (no forced fallback, no debug)
 app.get('/api/health', (req, res) => {
     const ips = getIps();
     const ip = ips[0] || '192.168.43.1';
@@ -47,6 +49,10 @@ app.get('/api/health', (req, res) => {
         kioskUrl: `http://${ip}:${PORT}/kiosk?stall=stall-001`,
         timestamp: new Date().toISOString(),
     });
+});
+app.get('/api/debug/ips', (req, res) => {
+    const ips = getIps();
+    res.json({ ips, ip: ips[0] || '192.168.43.1', headers: req.headers, socket: req.socket.localAddress });
 });
 // API routes (auth first so /auth/login is public)
 app.use('/api', authRouter);
@@ -105,17 +111,22 @@ app.use('/api', (req, res) => res.status(404).json({ error: `API route ${req.met
 httpServer.listen(PORT, HOST, () => {
     const ips = getIps();
     const ip = ips[0] || '192.168.43.1';
-    console.log(`
-╔════════════════════════════════════════════════════╗
-║  CampusBITE Server running                        ║
-║  Local:   http://localhost:${PORT}                  ║
-║  Network: http://${ip}:${PORT} `.padEnd(53) + '║' + `
-║  Kiosk:   http://${ip}:${PORT}/kiosk               ║
-║  Health:  http://${ip}:${PORT}/api/health          ║
-╚════════════════════════════════════════════════════╝
-  `);
+    console.log(`\nCampusBITE running at http://${ip}:${PORT}`);
+    console.log(`Kiosk: http://${ip}:${PORT}/kiosk`);
+    console.log(`Health: http://${ip}:${PORT}/api/health`);
+    console.log(`All IPs: ${ips.join(', ') || 'none — try 192.168.43.1'}`);
+    console.log(`Termux: Hotspot ON first, then node ...; keep Termux open + termux-wake-lock`);
     if (!staticDir)
         console.log('Tip: Run npm run build --workspace=web-client to enable SPA');
+    // Extra hotspot bind for Samsung ap0 if 0.0.0.0 misses it
+    if (HOST === '0.0.0.0' && !ips.includes('192.168.43.1')) {
+        try {
+            const extra = createServer(app);
+            extra.listen(PORT, '192.168.43.1', () => console.log(`Hotspot extra: http://192.168.43.1:${PORT}`));
+            extra.on('error', () => { });
+        }
+        catch { }
+    }
 });
 httpServer.on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
