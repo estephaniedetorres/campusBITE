@@ -19,6 +19,13 @@
   },
   "allowScripts": {
     "better-sqlite3": true,
-    "esbuild": true
+    "esbuild": true,
+    "expo": true,
+    "expo-router": true,
+    "react-native-web": true,
+    "react-native-svg": true,
+    "expo-status-bar": true,
+    "qrcode": true,
+    "query-string": true
   }
 }
