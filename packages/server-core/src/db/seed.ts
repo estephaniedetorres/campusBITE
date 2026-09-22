@@ -74,7 +74,7 @@ upsertMenuItem('item-strawberry-sundae', stall2, catIceSundae, 'Strawberry Sunda
 upsertMenuItem('item-plain-fries', stall1, catFriesClassic, 'Plain Fries', 55, 'Crispy classic fries 150g', 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=500&auto=format&fit=crop&q=60', 4.7, 142);
 upsertMenuItem('item-cheese-fries', stall1, catFriesClassic, 'Cheese Fries', 69, 'Fries + cheese powder', 'https://images.unsplash.com/photo-1585109649139-366815a0d713?w=500&auto=format&fit=crop&q=60', 4.8, 98);
 upsertMenuItem('item-loaded-fries', stall1, catFriesLoaded, 'Loaded Chili Cheese Fries', 99, 'Fries + chili cheese + sour cream', 'https://images.unsplash.com/photo-1630384060421-c342d74f260f?w=500&auto=format&fit=crop&q=60', 4.9, 76);
-// Variants — McDo style for Potato Corner fries (Small/Medium/Large)
+// Variants — Potato Corner fries (Small/Medium/Large) + Matees (Cone/Small Cup/Large Cup/Bun)
 upsertVariant('item-plain-fries', 'Small', 55, 1);
 upsertVariant('item-plain-fries', 'Medium', 75, 2);
 upsertVariant('item-plain-fries', 'Large', 95, 3);
@@ -84,6 +84,18 @@ upsertVariant('item-cheese-fries', 'Large', 109, 3);
 upsertVariant('item-loaded-fries', 'Small', 99, 1);
 upsertVariant('item-loaded-fries', 'Medium', 119, 2);
 upsertVariant('item-loaded-fries', 'Large', 139, 3);
+// Matees — Cone / Small Cup / Large Cup / Bun
+upsertVariant('item-vanilla-scoop', 'Cone', 45, 1);
+upsertVariant('item-vanilla-scoop', 'Small Cup', 45, 2);
+upsertVariant('item-vanilla-scoop', 'Large Cup', 65, 3);
+upsertVariant('item-vanilla-scoop', 'Bun', 55, 4);
+upsertVariant('item-choco-scoop', 'Cone', 49, 1);
+upsertVariant('item-choco-scoop', 'Small Cup', 49, 2);
+upsertVariant('item-choco-scoop', 'Large Cup', 69, 3);
+upsertVariant('item-choco-scoop', 'Bun', 59, 4);
+upsertVariant('item-strawberry-sundae', 'Small Cup', 89, 1);
+upsertVariant('item-strawberry-sundae', 'Large Cup', 109, 2);
+upsertVariant('item-strawberry-sundae', 'Cone', 89, 3);
 
 // Clean legacy items for Matees/Potato demo — FK safe (delete BOM → order_items → menu)
 try { db.prepare(`DELETE FROM recipe_bom WHERE menu_item_id IN ('item-burger-classic','item-burger-double','item-rice-chicken','item-coffee-latte','item-milk-tea','item-croissant')`).run(); } catch {}
