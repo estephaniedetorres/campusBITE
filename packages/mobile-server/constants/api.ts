@@ -7,7 +7,17 @@
 export const DEFAULT_HOTSPOT_URL = 'http://192.168.43.1:3000';
 export const DEFAULT_DEV_URL = 'http://192.168.1.104:3000';
 
-let _apiBase = DEFAULT_HOTSPOT_URL;
+// Auto-detect Expo host (192.168.1.104:8081) → use same IP with :3000 for canteen
+function detectDefault(): string {
+  try {
+    if (typeof window !== 'undefined' && (window as any).location?.hostname) {
+      const h = (window as any).location.hostname;
+      if (h && h !== 'localhost' && h !== '127.0.0.1') return `http://${h}:3000`;
+    }
+  } catch {}
+  return DEFAULT_HOTSPOT_URL;
+}
+let _apiBase = detectDefault();
 
 export function setApiBase(url: string) {
   _apiBase = url.replace(/\/$/, '');
