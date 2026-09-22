@@ -105,13 +105,14 @@ export default function KioskPage() {
   return (
     <div className="space-y-5 pb-24">
       {qrStall && (
-        <div className="fork-card rounded-2xl p-3.5 flex items-center gap-3">
+        <a href={`/kiosk?stall=${qrStall}${qrTable?`&table=${qrTable}`:''}`} className="fork-card rounded-2xl p-3.5 flex items-center gap-3 hover:bg-stone-50 transition">
           <div className="w-10 h-10 rounded-xl bg-fork-green text-white flex items-center justify-center shrink-0"><QrCode size={18}/></div>
           <div className="flex-1 min-w-0">
             <div className="font-serif font-bold text-sm text-stone-900">{stalls.find(s=>s.id===qrStall)?.name || qrStall} {qrTable && `· Table ${qrTable}`}</div>
+            <div className="text-xs text-stone-500 truncate">Tap to view {stalls.find(s=>s.id===qrStall)?.name || qrStall} menu</div>
           </div>
-          <span className="hidden sm:inline text-xs font-medium px-3 py-1.5 rounded-full bg-fork-greenSoft text-fork-green border border-fork-green/10">QR</span>
-        </div>
+          <span className="hidden sm:inline text-xs font-medium px-3 py-1.5 rounded-full bg-fork-greenSoft text-fork-green border border-fork-green/10">QR → kiosk?stall={qrStall}</span>
+        </a>
       )}
 
       <div className="flex flex-wrap items-center gap-2">
