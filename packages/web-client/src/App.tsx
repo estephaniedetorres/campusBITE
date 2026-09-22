@@ -7,8 +7,17 @@ import AdminPage from './apps/admin/AdminPage';
 import LoginPage from './apps/auth/LoginPage';
 import { AuthProvider } from './lib/auth';
 import { Star, Clock, MapPin, Flame } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { api } from './lib/api';
 
 function Home() {
+  const [stalls, setStalls] = useState<any[]>([]);
+  useEffect(() => { api.get<any[]>('/api/stalls').then(setStalls).catch(()=>{}); }, []);
+  const matees = stalls.find(s=> s.id==='stall-002' || s.name==='Matees');
+  const potato = stalls.find(s=> s.id==='stall-001' || s.name==='Potato Corner');
+  // Real ratings from DB, no hardcode
+  const mateesRating = matees?.rating != null ? Number(matees.rating).toFixed(1) : '—';
+  const potatoRating = potato?.rating != null ? Number(potato.rating).toFixed(1) : '—';
   return (
     <div className="space-y-6">
       {/* Hero — Promotional, The Fork style */}
@@ -17,15 +26,15 @@ function Home() {
           <div className="px-6 sm:px-8 py-8 sm:py-10">
             <div className="inline-flex items-center gap-2 text-xs font-semibold tracking-widest text-fork-green uppercase bg-fork-greenSoft px-3 py-1 rounded-full">CampusBITE · Offline Canteen</div>
             <h1 className="font-serif text-3xl sm:text-4xl lg:text-[42px] font-bold tracking-tight text-stone-900 mt-4 leading-[0.95]">Canteen favorites,<br/><span className="text-fork-green">ready when you are.</span></h1>
-            <p className="mt-4 text-sm sm:text-base text-stone-600 max-w-lg leading-relaxed">Ice cream from Matees. Famous fries from Potato Corner. Scan, order, pick up — no internet, just the canteen hotspot.</p>
+            <p className="mt-4 text-sm sm:text-base text-stone-600 max-w-lg leading-relaxed">Ice cream from Matees. Famous fries from Potato Corner. Scan, order, pick up.</p>
             <div className="mt-6 flex flex-wrap gap-3">
               <a href="/kiosk" className="inline-flex items-center justify-center bg-stone-900 text-white px-6 py-3 rounded-full font-semibold hover:bg-stone-800">Order now</a>
               <span className="inline-flex items-center gap-2 text-xs text-stone-500 px-3 py-3"><MapPin size={14}/> Hotspot: 192.168.43.1:3000 · <Clock size={14}/> 10-15 min</span>
             </div>
             <div className="mt-6 flex items-center gap-4 text-xs">
-              <span className="flex items-center gap-1.5 font-medium text-stone-700"><Star size={14} className="text-amber-400 fill-amber-400"/> 4.8 Matees</span>
+              <span className="flex items-center gap-1.5 font-medium text-stone-700"><Star size={14} className="text-amber-400 fill-amber-400"/> {mateesRating} Matees</span>
               <span className="text-stone-300">·</span>
-              <span className="flex items-center gap-1.5 font-medium text-stone-700"><Flame size={14} className="text-orange-500"/> 4.9 Potato Corner</span>
+              <span className="flex items-center gap-1.5 font-medium text-stone-700"><Flame size={14} className="text-orange-500"/> {potatoRating} Potato Corner</span>
             </div>
           </div>
           <div className="relative h-64 sm:h-72 lg:h-auto bg-stone-100">
@@ -34,11 +43,11 @@ function Home() {
             <div className="absolute bottom-4 left-4 right-4 flex gap-3">
               <div className="flex-1 bg-white/95 backdrop-blur rounded-2xl p-3 border border-white/20">
                 <div className="text-xs font-semibold text-stone-900">Matees</div>
-                <div className="text-xs text-stone-500">Ice Cream · 4.8 ★ · Sundaes</div>
+                <div className="text-xs text-stone-500">Ice Cream · {mateesRating} ★ · Sundaes</div>
               </div>
               <div className="flex-1 bg-white/95 backdrop-blur rounded-2xl p-3 border border-white/20">
                 <div className="text-xs font-semibold text-stone-900">Potato Corner</div>
-                <div className="text-xs text-stone-500">Fries · 4.9 ★ · Loaded</div>
+                <div className="text-xs text-stone-500">Fries · {potatoRating} ★ · Loaded</div>
               </div>
             </div>
           </div>
@@ -56,7 +65,7 @@ function Home() {
                 <div className="font-serif font-bold text-white">Matees</div>
                 <div className="text-xs text-white/80">Ice Cream · Sundaes</div>
               </div>
-              <span className="bg-white text-stone-900 text-xs font-bold px-2.5 py-1 rounded-full">4.8 ★</span>
+              <span className="bg-white text-stone-900 text-xs font-bold px-2.5 py-1 rounded-full">{mateesRating} ★</span>
             </div>
           </div>
           <div className="p-4 flex items-center justify-between">
@@ -73,7 +82,7 @@ function Home() {
                 <div className="font-serif font-bold text-white">Potato Corner</div>
                 <div className="text-xs text-white/80">World Famous Flavored Fries</div>
               </div>
-              <span className="bg-white text-stone-900 text-xs font-bold px-2.5 py-1 rounded-full">4.9 ★</span>
+              <span className="bg-white text-stone-900 text-xs font-bold px-2.5 py-1 rounded-full">{potatoRating} ★</span>
             </div>
           </div>
           <div className="p-4 flex items-center justify-between">

@@ -145,7 +145,7 @@ export default function KioskPage() {
               <div>
                 <h2 className="font-serif text-xl sm:text-2xl font-bold text-white tracking-tight">{currentStall.name}</h2>
                 <div className="flex items-center gap-2 mt-1 text-xs text-white/80">
-                  <span className="inline-flex items-center gap-1 bg-white text-stone-900 px-2 py-1 rounded-full font-semibold"><Star size={12} fill="currentColor"/> {(currentStall.rating ?? 4.8).toFixed(1)}</span>
+                  <span className="inline-flex items-center gap-1 bg-white text-stone-900 px-2 py-1 rounded-full font-semibold"><Star size={12} fill="currentColor"/> {currentStall.rating != null ? Number(currentStall.rating).toFixed(1) : '—'}</span>
                   <span>· {currentStall.description || 'Canteen favourite'}</span>
                   <span className="hidden sm:inline">· {currentStall.rating_count ?? 0} ratings</span>
                 </div>
@@ -178,7 +178,7 @@ export default function KioskPage() {
                 <div className="font-serif font-bold text-stone-900 leading-tight line-clamp-1">{item.name}</div>
                 <div className="text-xs text-stone-500 line-clamp-2 mt-1 min-h-[32px]">{item.description}</div>
                 <div className="flex items-center justify-between mt-3">
-                  <span className="text-xs text-stone-500 flex items-center gap-1"><Star size={12} className="text-amber-400 fill-amber-400"/> {(item.rating ?? 4.9).toFixed(1)} · {item.category_name || 'Popular'} · {item.rating_count ?? 0}</span>
+                  <span className="text-xs text-stone-500 flex items-center gap-1"><Star size={12} className="text-amber-400 fill-amber-400"/> {item.rating != null ? Number(item.rating).toFixed(1) : '—'} · {item.category_name || 'Popular'} · {item.rating_count ?? 0}</span>
                   {qty === 0 ? (
                     <button onClick={()=>add(item.id)} className="w-9 h-9 rounded-full bg-stone-900 text-white flex items-center justify-center hover:bg-stone-800"><Plus size={16}/></button>
                   ) : (
