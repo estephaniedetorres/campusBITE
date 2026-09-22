@@ -54,9 +54,9 @@ function Home() {
         </div>
       </div>
 
-      {/* Featured stalls — promo */}
+      {/* Featured stalls — promo (links to general Kiosk, not stall-filtered) */}
       <div className="grid md:grid-cols-2 gap-4">
-        <a href="/kiosk?stall=stall-002" className="fork-card rounded-[20px] overflow-hidden group hover:shadow-forkHover transition">
+        <a href="/kiosk" className="fork-card rounded-[20px] overflow-hidden group hover:shadow-forkHover transition">
           <div className="h-36 relative">
             <img src="https://images.unsplash.com/photo-1495147466023-a36482277724?w=600&auto=format&fit=crop&q=60" alt="Matees" className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.02] transition duration-500" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
@@ -73,7 +73,7 @@ function Home() {
             <span className="text-sm font-semibold text-stone-900">View →</span>
           </div>
         </a>
-        <a href="/kiosk?stall=stall-001" className="fork-card rounded-[20px] overflow-hidden group hover:shadow-forkHover transition">
+        <a href="/kiosk" className="fork-card rounded-[20px] overflow-hidden group hover:shadow-forkHover transition">
           <div className="h-36 relative">
             <img src="https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=600&auto=format&fit=crop&q=60" alt="Potato Corner" className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.02] transition duration-500" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
