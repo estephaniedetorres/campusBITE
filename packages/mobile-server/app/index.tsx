@@ -1,176 +1,158 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput, Linking, Alert, Platform } from 'react-native';
-import * as LinkingExpo from 'expo-linking';
-import { getApiBase, setApiBase, apiGet, setToken } from '../constants/api';
-
-// Simple QR using qrcode + SVG rendering via API-generated image (offline fallback: just show URL)
-// For Expo Go we use a tiny data-URL via qrcode lib (pure JS). We render as text or via Image from api.qrserver.com? Offline we use text fallback.
-// To keep deps minimal, we use qrcode to generate data URL and show via Text, but for real QR we use react-native-svg if available.
-// Here we use a simple approach: show URL and use external QR image if online, else show URL for manual entry.
-import * as QRCode from 'qrcode';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Image, Linking, Alert } from 'react-native';
+import { getApiBase, apiGet } from '../constants/api';
 
 export default function Home() {
-  const [apiBase, setApiBaseState] = useState(getApiBase());
-  const [inputUrl, setInputUrl] = useState(getApiBase());
   const [health, setHealth] = useState<any>(null);
   const [stalls, setStalls] = useState<any[]>([]);
-  const [error, setError] = useState('');
-  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const apiBase = getApiBase();
 
   async function load() {
-    setError('');
     try {
       const h = await apiGet('/api/health');
       setHealth(h);
       const s = await apiGet('/api/stalls');
       setStalls(s);
-      // Generate QR for first stall
-      const ip = h.ips?.[0] || '192.168.43.1';
-      const url = `http://${ip}:${h.port}/kiosk?stall=${s[0]?.id || 'stall-001'}`;
-      try {
-        const dataUrl = await QRCode.toDataURL(url, { width: 160, margin: 1 });
-        setQrDataUrl(dataUrl);
-      } catch {}
-    } catch (e: any) {
-      setError(e.message);
-      setHealth(null);
-    }
+    } catch {}
   }
+  useEffect(() => { load(); }, []);
 
-  useEffect(() => { load(); }, [apiBase]);
-  useEffect(() => { setApiBase(apiBase); }, [apiBase]);
-
-  function applyUrl() {
-    const cleaned = inputUrl.replace(/\/$/, '');
-    setApiBase(cleaned);
-    setApiBaseState(cleaned);
-  }
+  const matees = stalls.find((s: any) => s.name === 'Matees');
+  const potato = stalls.find((s: any) => s.name === 'Potato Corner');
+  const mateesRating = matees?.rating != null ? Number(matees.rating).toFixed(1) : '4.8';
+  const potatoRating = potato?.rating != null ? Number(potato.rating).toFixed(1) : '4.9';
 
   function open(path: string) {
-    const url = `${getApiBase()}${path}`;
-    Linking.openURL(url).catch(() => Alert.alert('Cannot open', url));
+    Linking.openURL(`${getApiBase()}${path}`).catch(() => Alert.alert('Cannot open', `${getApiBase()}${path}`));
   }
 
   return (
     <View style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        {/* Hero — The Fork promo */}
         <View style={styles.hero}>
-          <Text style={styles.heroTitle}>CampusBITE</Text>
-          <Text style={styles.heroSub}>Phone as Server • Offline-first • Hotspot:Port 3000</Text>
-          <Text style={styles.heroNote}>Expo Go is UI only. Node server still runs via Termux on same phone (or PC). See instructions below.</Text>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Server URL (tap to edit)</Text>
-          <Text style={styles.cardDesc}>Hotspot phone server is usually http://192.168.43.1:3000 — PC dev is http://192.168.1.104:3000</Text>
-          <View style={styles.row}>
-            <TextInput value={inputUrl} onChangeText={setInputUrl} autoCapitalize="none" autoCorrect={false} style={styles.input} placeholder="http://192.168.43.1:3000" />
-            <TouchableOpacity onPress={applyUrl} style={styles.btnDark}><Text style={styles.btnDarkText}>Save</Text></TouchableOpacity>
+          <Text style={styles.eyebrow}>CampusBITE · Offline Canteen</Text>
+          <Text style={styles.heroTitle}>Canteen favorites,{"\n"}<Text style={styles.heroAccent}>ready when you are.</Text></Text>
+          <Text style={styles.heroDesc}>Ice cream from Matees. Famous fries from Potato Corner. Scan, order, pick up — on the canteen hotspot.</Text>
+          <View style={styles.heroRow}>
+            <TouchableOpacity onPress={() => open('/kiosk')} style={styles.btnDark}><Text style={styles.btnDarkText}>Order now</Text></TouchableOpacity>
+            <Text style={styles.heroMeta}>Hotspot · 10-15 min · {health?.ip || '192.168.43.1'}:3000</Text>
           </View>
-          <View style={styles.row}>
-            <TouchableOpacity onPress={() => { setInputUrl('http://192.168.43.1:3000'); setApiBase('http://192.168.43.1:3000'); setApiBaseState('http://192.168.43.1:3000'); }} style={styles.chip}><Text style={styles.chipText}>Hotspot</Text></TouchableOpacity>
-            <TouchableOpacity onPress={() => { setInputUrl('http://192.168.1.104:3000'); setApiBase('http://192.168.1.104:3000'); setApiBaseState('http://192.168.1.104:3000'); }} style={styles.chip}><Text style={styles.chipText}>Dev PC</Text></TouchableOpacity>
-            <TouchableOpacity onPress={load} style={styles.chip}><Text style={styles.chipText}>Refresh Health</Text></TouchableOpacity>
+          <View style={styles.heroRatings}>
+            <Text style={styles.ratingPill}>★ {mateesRating} Matees</Text>
+            <Text style={styles.ratingDivider}>·</Text>
+            <Text style={styles.ratingPill}>🔥 {potatoRating} Potato Corner</Text>
           </View>
-          <Text style={styles.mono}>Current: {apiBase}</Text>
+          <View style={styles.heroCards}>
+            <View style={styles.miniCard}>
+              <Text style={styles.miniTitle}>Matees</Text>
+              <Text style={styles.miniDesc}>Ice Cream · {mateesRating} ★</Text>
+            </View>
+            <View style={styles.miniCard}>
+              <Text style={styles.miniTitle}>Potato Corner</Text>
+              <Text style={styles.miniDesc}>Fries · {potatoRating} ★</Text>
+            </View>
+          </View>
+          <Text style={styles.small}>Hotspot: {apiBase} · Kiosk is public — no account needed</Text>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Server Health</Text>
-          {error ? (
-            <View style={styles.errorBox}><Text style={styles.errorText}>{error}</Text><Text style={styles.small}>Is server running? In Termux: bash scripts/phone-server.sh → keep open + Hotspot ON</Text></View>
-          ) : health ? (
-            <>
-              <Text style={styles.ok}>● Online — {health.service} • up {Math.floor(health.uptime)}s</Text>
-              <Text style={styles.mono}>IPs: {health.ips?.join(', ') || '—'}:{health.port}</Text>
-              <Text style={styles.mono}>WS: {health.ws}</Text>
-              <Text style={styles.mono}>Kiosk (only public): {getApiBase()}/kiosk?stall=stall-001</Text>
-              <Text style={styles.small}>POS/KDS/Admin require login: admin/admin123, grill/grill123, brew/brew123</Text>
-            </>
-          ) : (
-            <Text style={styles.small}>Loading…</Text>
-          )}
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Stall QR — Customers scan to order</Text>
-          <Text style={styles.small}>QR encodes http://&lt;hotspot-ip&gt;:3000/kiosk?stall=STALL_ID — Kiosk is only public page.</Text>
-          {stalls.map((s: any) => {
-            const ip = health?.ips?.[0] || apiBase.replace('http://','').split(':')[0];
-            const url = `http://${ip}:${health?.port || 3000}/kiosk?stall=${s.id}`;
-            return (
-              <View key={s.id} style={styles.qrRow}>
-                <View style={styles.qrBox}>
-                  <Text style={styles.qrUrl}>{url}</Text>
-                  <Text style={styles.small}>Scan with phone camera → opens Kiosk filtered to {s.name}</Text>
-                </View>
-                <TouchableOpacity onPress={() => open(`/kiosk?stall=${s.id}`)} style={styles.btnOrange}><Text style={styles.btnOrangeText}>Open</Text></TouchableOpacity>
+        {/* Featured — Matees & Potato Corner (display only) */}
+        <View style={styles.grid}>
+          <View style={styles.featureCard}>
+            <Image source={{ uri: 'https://images.unsplash.com/photo-1488900128323-21503983a07e?w=600&auto=format&fit=crop&q=60' }} style={styles.featureImage} />
+            <View style={styles.featureOverlay} />
+            <View style={styles.featureBottom}>
+              <View>
+                <Text style={styles.featureName}>Matees</Text>
+                <Text style={styles.featureSub}>Ice Cream · Sundaes</Text>
               </View>
-            );
-          })}
-          {!stalls.length && <Text style={styles.small}>No stalls — run seed: npx tsx packages/server-core/src/db/seed.ts</Text>}
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Quick Open (staff login required for POS/KDS/Admin)</Text>
-          <View style={styles.grid}>
-            <TouchableOpacity onPress={() => open('/kiosk')} style={[styles.tile, styles.tileOrange]}><Text style={styles.tileTitle}>Kiosk</Text><Text style={styles.tileDesc}>Public • Customer order</Text></TouchableOpacity>
-            <TouchableOpacity onPress={() => open('/pos')} style={styles.tile}><Text style={styles.tileTitle}>POS</Text><Text style={styles.tileDesc}>Staff • Cashier</Text></TouchableOpacity>
-            <TouchableOpacity onPress={() => open('/kds')} style={styles.tile}><Text style={styles.tileTitle}>Kitchen</Text><Text style={styles.tileDesc}>Staff • KDS</Text></TouchableOpacity>
-            <TouchableOpacity onPress={() => open('/admin')} style={styles.tile}><Text style={styles.tileTitle}>Admin</Text><Text style={styles.tileDesc}>Menu + Inventory</Text></TouchableOpacity>
+              <View style={styles.badge}><Text style={styles.badgeText}>{mateesRating} ★</Text></View>
+            </View>
           </View>
-          <Text style={styles.small}>If POS says 401 Unauthorized → open /login first (admin/admin123).</Text>
+          <View style={styles.featureCard}>
+            <Image source={{ uri: 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=600&auto=format&fit=crop&q=60' }} style={styles.featureImage} />
+            <View style={styles.featureOverlay} />
+            <View style={styles.featureBottom}>
+              <View>
+                <Text style={styles.featureName}>Potato Corner</Text>
+                <Text style={styles.featureSub}>World Famous Flavored Fries</Text>
+              </View>
+              <View style={styles.badge}><Text style={styles.badgeText}>{potatoRating} ★</Text></View>
+            </View>
+          </View>
+        </View>
+        <View style={styles.gridCaptions}>
+          <Text style={styles.caption}>Vanilla · Choco · Strawberry Sundae</Text>
+          <Text style={styles.caption}>Plain · Cheese · Loaded Chili</Text>
         </View>
 
-        <View style={styles.cardDark}>
-          <Text style={styles.cardTitleDark}>Phone as Server — Termux steps (REQUIRED)</Text>
-          <Text style={styles.monoDark}>1. F-Droid → install Termux (not Play Store)</Text>
-          <Text style={styles.monoDark}>2. git clone https://github.com/estephaniedetorres/campusBITE.git</Text>
-          <Text style={styles.monoDark}>3. bash scripts/phone-server.sh  # handles Node 22 check</Text>
-          <Text style={styles.monoDark}>4. Keep Termux open + Hotspot ON</Text>
-          <Text style={styles.smallDark}>Expo Go shows UI only. Node server runs in Termux on same phone. For final APK: npx expo run:android (needs Android Studio + nodejs-mobile).</Text>
+        {/* For Stall Owners — login only here */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>For Stall Owners</Text>
+          <Text style={styles.cardDesc}>Manage your menu, prices and stock. Log in to access POS, Kitchen and Inventory for your stall.</Text>
+          <Text style={styles.mono}>matees/matees123 · potato/potato123 · admin/admin123</Text>
+          <TouchableOpacity onPress={() => open('/login')} style={styles.btnDarkFull}><Text style={styles.btnDarkText}>Stall Owner Log in</Text></TouchableOpacity>
         </View>
 
-        <Text style={styles.footer}>CampusBITE • Expo Go • Kiosk only public • Hybrid ADMIN/STALL_OWNER</Text>
+        {/* Quick open */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Open</Text>
+          <View style={styles.tiles}>
+            <TouchableOpacity onPress={() => open('/kiosk')} style={[styles.tile, styles.tileDark]}><Text style={styles.tileTitleLight}>Kiosk</Text><Text style={styles.tileDescLight}>Customer order</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => open('/pos')} style={styles.tile}><Text style={styles.tileTitle}>POS</Text><Text style={styles.tileDesc}>Cashier</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => open('/kds')} style={styles.tile}><Text style={styles.tileTitle}>Kitchen</Text><Text style={styles.tileDesc}>KDS</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => open('/admin')} style={styles.tile}><Text style={styles.tileTitle}>Admin</Text><Text style={styles.tileDesc}>Menu + Stock</Text></TouchableOpacity>
+          </View>
+        </View>
+
+        <Text style={styles.footer}>CampusBITE · Expo Go · npx expo start --host lan</Text>
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#fafafa' },
-  container: { padding: 16, gap: 12, paddingBottom: 40 },
-  hero: { backgroundColor: '#f97316', borderRadius: 24, padding: 20 },
-  heroTitle: { color: '#fff', fontSize: 28, fontWeight: '900' },
-  heroSub: { color: '#fff', opacity: 0.9, marginTop: 4 },
-  heroNote: { color: '#fff', opacity: 0.85, fontSize: 12, marginTop: 8 },
-  card: { backgroundColor: '#fff', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: '#e4e4e7' },
-  cardDark: { backgroundColor: '#111827', borderRadius: 20, padding: 16 },
-  cardTitle: { fontWeight: '800', fontSize: 14 },
-  cardTitleDark: { fontWeight: '800', color: '#fff' },
-  cardDesc: { fontSize: 12, color: '#71717a', marginTop: 4 },
-  row: { flexDirection: 'row', gap: 8, marginTop: 10, alignItems: 'center' },
-  input: { flex: 1, borderWidth: 1, borderColor: '#e4e4e7', borderRadius: 12, padding: 12, backgroundColor: '#fff' },
-  btnDark: { backgroundColor: '#111', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12 },
-  btnDarkText: { color: '#fff', fontWeight: '700' },
-  btnOrange: { backgroundColor: '#f97316', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12 },
-  btnOrangeText: { color: '#fff', fontWeight: '800' },
-  chip: { backgroundColor: '#f4f4f5', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
-  chipText: { fontSize: 12, fontWeight: '600' },
-  mono: { fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }), fontSize: 11, color: '#71717a', marginTop: 6 },
-  monoDark: { fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }), fontSize: 11, color: '#d4d4d8', marginTop: 4 },
-  ok: { color: '#16a34a', fontWeight: '700', marginTop: 6 },
-  errorBox: { backgroundColor: '#fef2f2', borderColor: '#fecaca', borderWidth: 1, borderRadius: 12, padding: 10, marginTop: 8 },
-  errorText: { color: '#dc2626', fontSize: 12 },
-  small: { fontSize: 11, color: '#71717a', marginTop: 6 },
-  smallDark: { fontSize: 11, color: '#a1a1aa', marginTop: 6 },
-  qrRow: { flexDirection: 'row', gap: 10, marginTop: 10, alignItems: 'center', borderWidth: 1, borderColor: '#e4e4e7', borderRadius: 12, padding: 10 },
-  qrBox: { flex: 1 },
-  qrUrl: { fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }), fontSize: 10, color: '#18181b' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 10 },
-  tile: { flexBasis: '48%', backgroundColor: '#fff', borderWidth: 1, borderColor: '#e4e4e7', borderRadius: 16, padding: 14 },
-  tileOrange: { backgroundColor: '#fff7ed', borderColor: '#fed7aa' },
-  tileTitle: { fontWeight: '800' },
-  tileDesc: { fontSize: 11, color: '#71717a', marginTop: 2 },
-  footer: { textAlign: 'center', fontSize: 11, color: '#a1a1aa', marginTop: 8 },
+  safe: { flex: 1, backgroundColor: '#FAFAF9' },
+  container: { padding: 16, gap: 16, paddingBottom: 40 },
+  hero: { backgroundColor: '#fff', borderRadius: 28, padding: 20, borderWidth: 1, borderColor: '#E7E5E4' },
+  eyebrow: { fontSize: 11, fontWeight: '700', letterSpacing: 1.5, color: '#0F4C4A', textTransform: 'uppercase', backgroundColor: '#E6F2F0', alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, overflow: 'hidden' },
+  heroTitle: { fontSize: 28, fontWeight: '800', color: '#1C1917', marginTop: 12, lineHeight: 30 },
+  heroAccent: { color: '#0F4C4A' },
+  heroDesc: { fontSize: 14, color: '#57534E', marginTop: 8, lineHeight: 20 },
+  heroRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16, flexWrap: 'wrap' },
+  btnDark: { backgroundColor: '#1C1917', paddingHorizontal: 18, paddingVertical: 12, borderRadius: 999, alignItems: 'center' },
+  btnDarkText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  btnDarkFull: { backgroundColor: '#1C1917', paddingVertical: 12, borderRadius: 999, alignItems: 'center', marginTop: 12 },
+  heroMeta: { fontSize: 11, color: '#78716C' },
+  heroRatings: { flexDirection: 'row', gap: 8, marginTop: 14, alignItems: 'center' },
+  ratingPill: { fontSize: 12, fontWeight: '600', color: '#1C1917' },
+  ratingDivider: { color: '#D6D3D1' },
+  heroCards: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  miniCard: { flex: 1, backgroundColor: '#F5F5F4', borderRadius: 16, padding: 12, borderWidth: 1, borderColor: '#E7E5E4' },
+  miniTitle: { fontSize: 12, fontWeight: '700', color: '#1C1917' },
+  miniDesc: { fontSize: 11, color: '#78716C', marginTop: 2 },
+  small: { fontSize: 11, color: '#78716C', marginTop: 6 },
+  grid: { flexDirection: 'row', gap: 12 },
+  featureCard: { flex: 1, height: 140, borderRadius: 20, overflow: 'hidden', backgroundColor: '#fff', borderWidth: 1, borderColor: '#E7E5E4' },
+  featureImage: { ...StyleSheet.absoluteFillObject },
+  featureOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.25)' },
+  featureBottom: { position: 'absolute', bottom: 12, left: 12, right: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
+  featureName: { color: '#fff', fontWeight: '800', fontSize: 13 },
+  featureSub: { color: 'rgba(255,255,255,0.8)', fontSize: 11, marginTop: 2 },
+  badge: { backgroundColor: '#fff', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999 },
+  badgeText: { fontSize: 11, fontWeight: '800', color: '#1C1917' },
+  gridCaptions: { flexDirection: 'row', gap: 12, marginTop: -8 },
+  caption: { flex: 1, fontSize: 12, color: '#57534E', textAlign: 'center' },
+  card: { backgroundColor: '#fff', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: '#E7E5E4' },
+  cardTitle: { fontWeight: '800', fontSize: 14, color: '#1C1917' },
+  cardDesc: { fontSize: 12, color: '#78716C', marginTop: 4 },
+  mono: { fontFamily: 'monospace', fontSize: 10, color: '#78716C', marginTop: 6 },
+  tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 12 },
+  tile: { flexBasis: '48%', backgroundColor: '#fff', borderWidth: 1, borderColor: '#E7E5E4', borderRadius: 16, padding: 14 },
+  tileDark: { backgroundColor: '#1C1917', borderColor: '#1C1917' },
+  tileTitle: { fontWeight: '800', color: '#1C1917' },
+  tileTitleLight: { fontWeight: '800', color: '#fff' },
+  tileDesc: { fontSize: 11, color: '#78716C', marginTop: 2 },
+  tileDescLight: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+  footer: { textAlign: 'center', fontSize: 11, color: '#A8A29E', marginTop: 8 },
 });
