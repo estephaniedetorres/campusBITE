@@ -9,13 +9,10 @@
 git clone https://github.com/estephaniedetorres/campusBITE.git
 cd campusBITE
 npm install
-npm run build --workspace=web-client
-npm run build --workspace=server-core
 npx tsx packages/server-core/src/db/seed.ts
 # Verify PC:
-npm run start --workspace=server-core
+node packages/server-core/dist/server.js
 # check http://localhost:3000/api/health → {"ok":true}
-# check http://localhost:3000/kiosk?stall=stall-001
 # stop with Ctrl+C
 ```
 
@@ -36,10 +33,10 @@ node packages/server-core/dist/server.js
 ```
 
 3. **All clients → join same hotspot** → browser:
-   - **Customer:** Scan QR or `http://192.168.43.1:3000/kiosk?stall=stall-001` → add Classic Burger → Checkout → note `A3X9` + Live Tracker (WS).
-   - **Cashier (POS):** `http://192.168.43.1:3000/login` → `grill/grill123` → `POS` → enter `A3X9` → Confirm Cash → triggers BOM `UPDATE ingredients` atomically.
-   - **Kitchen (KDS):** `http://192.168.43.1:3000/login` → `grill/grill123` → `KDS` → New → Preparing → Ready (chime).
-   - **Manager (Admin):** `http://192.168.43.1:3000/login` → `admin/admin123` → `Admin → Ingredients` → see patty 80→79, `BOM`, `EOD Audit`, `Users` (hybrid: ADMIN all, STALL_OWNER own stall only — try `brew/brew123` fails to edit grill stall with 403).
+   - **Customer:** Scan QR or `http://192.168.43.1:3000/kiosk?stall=stall-001` → add Cheese Fries → Checkout → note `A3X9` + Live Tracker (WS).
+   - **Cashier (POS):** `http://192.168.43.1:3000/login` → `potato/potato123` → `POS` → enter `A3X9` → Confirm Cash → triggers BOM `UPDATE ingredients` atomically.
+   - **Kitchen (KDS):** `http://192.168.43.1:3000/login` → `potato/potato123` → `KDS` → New → Preparing → Ready (chime).
+   - **Manager (Admin):** `http://192.168.43.1:3000/login` → `admin/admin123` → `Admin → Ingredients` → see potato 15000→14850, `BOM`, `EOD Audit`, `Users` (hybrid: ADMIN all, STALL_OWNER own stall only — try `matees/matees123` fails to edit Potato Corner stall with 403).
 
 ## 5-Min Script
 
@@ -47,11 +44,11 @@ node packages/server-core/dist/server.js
 
 1. **Kiosk QR (30s):** Customer scans QR → `?stall=stall-001` auto-filters `KioskPage.tsx:13` → cart → checkout `A3X9`.
 
-2. **POS (60s):** Cashier logs in `grill/grill123` → `POS` shows only `stall-001` orders (hybrid `orderRoutes.ts:82` `STALL_OWNER` filter) → lookup `A3X9` → Confirm → BOM deduct `bomEngine.ts:47` transaction.
+2. **POS (60s):** Cashier logs in `potato/potato123` → `POS` shows only `stall-001` orders (hybrid `orderRoutes.ts:82` `STALL_OWNER` filter) → lookup `A3X9` → Confirm → BOM deduct `bomEngine.ts:47` transaction.
 
-3. **KDS (60s):** Kitchen `grill/grill123` → `KDS` shows only grill tickets, chime on `WS /ws` `gateway.ts:16`, Kanban.
+3. **KDS (60s):** Kitchen `potato/potato123` → `KDS` shows only Potato Corner tickets, chime on `WS /ws` `gateway.ts:16`, Kanban.
 
-4. **Admin Hybrid (90s):** `admin` → `Menu` → create `Grill Special` in grill stall OK, try brew stall → `403` (`menuRoutes.ts:47`). `brew` login → only `Brew & Bites` menu. `Inventory/BOM/Audits` are ADMIN only.
+4. **Admin Hybrid (90s):** `admin` → `Menu` → create `Potato Special` in Potato Corner stall OK, try Matees stall → `403` (`menuRoutes.ts:47`). `matees` login → only `Matees` menu. `Inventory/BOM/Audits` are ADMIN only.
 
 5. **Phone as Server (30s):** Show Termux `node dist/server.js` log with `Hotspot: http://192.168.43.1:3000` and `curl http://192.168.43.1:3000/api/health` → `ok:true`. Emphasize same `dist` runs on phone via `bash scripts/phone-server.sh` (bypasses `pkg` mirrors, Node 24 `node:sqlite`).
 

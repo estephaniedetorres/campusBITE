@@ -121,7 +121,9 @@ export default function KioskPage() {
           const locked = cart.size>0 && !active;
           return (
             <button key={s.id} onClick={() => handleStallChange(s.id)} disabled={locked}
-              className={`px-4 py-2 rounded-full text-sm font-medium border transition ${active ? 'bg-stone-900 text-white border-stone-900' : locked ? 'bg-stone-50 text-stone-400 border-stone-200 cursor-not-allowed' : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-50'}`}>
+              title={s.name}
+              className={`px-3 py-2 rounded-full text-sm font-medium border transition flex items-center gap-2 ${active ? 'bg-stone-900 text-white border-stone-900' : locked ? 'bg-stone-50 text-stone-400 border-stone-200 cursor-not-allowed' : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-50'}`}>
+              {s.logo_url ? <img src={s.logo_url} alt={s.name} className="w-5 h-5 rounded-full object-cover" /> : null}
               {s.name}
             </button>
           );
@@ -136,13 +138,17 @@ export default function KioskPage() {
       {currentStall && (
         <div className="fork-card rounded-[24px] overflow-hidden">
           <div className="h-28 sm:h-36 bg-gradient-to-br from-stone-900 to-stone-700 relative">
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"/>
+            {currentStall.logo_url && <img src={currentStall.logo_url} alt={currentStall.name} className="absolute inset-0 w-full h-full object-cover opacity-30" />}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"/>
             <div className="absolute bottom-4 left-5 right-5 flex items-end justify-between">
-              <div>
-                <h2 className="font-serif text-xl sm:text-2xl font-bold text-white tracking-tight">{currentStall.name}</h2>
-                <div className="flex items-center gap-2 mt-1 text-xs text-white/80">
-                  <span className="inline-flex items-center gap-1 bg-white text-stone-900 px-2 py-1 rounded-full font-semibold"><Star size={12} fill="currentColor"/> 4.8</span>
-                  <span>· {currentStall.description || 'Canteen favourite'}</span>
+              <div className="flex items-center gap-3">
+                {currentStall.logo_url && <img src={currentStall.logo_url} alt={currentStall.name} className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl object-cover border-2 border-white/20 bg-white" />}
+                <div>
+                  <h2 className="font-serif text-xl sm:text-2xl font-bold text-white tracking-tight">{currentStall.name}</h2>
+                  <div className="flex items-center gap-2 mt-1 text-xs text-white/80">
+                    <span className="inline-flex items-center gap-1 bg-white text-stone-900 px-2 py-1 rounded-full font-semibold"><Star size={12} fill="currentColor"/> 4.8</span>
+                    <span>· {currentStall.description || 'Canteen favourite'}</span>
+                  </div>
                 </div>
               </div>
               <span className="hidden sm:inline-flex items-center gap-1 bg-white/15 backdrop-blur text-white px-3 py-1.5 rounded-full text-xs font-medium border border-white/20"><Clock size={12}/> 10-15 min</span>

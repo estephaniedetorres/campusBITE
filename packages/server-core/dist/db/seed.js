@@ -1,98 +1,124 @@
 import { db } from './database.js';
 import { v4 as uuidv4 } from 'uuid';
-function upsertStall(id, name, desc) {
-    db.prepare(`INSERT OR IGNORE INTO stalls (id, name, description) VALUES (?,?,?)`).run(id, name, desc);
+function upsertStall(id, name, desc, logoUrl) {
+    db.prepare(`INSERT INTO stalls (id, name, description, logo_url) VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, description=excluded.description, logo_url=COALESCE(excluded.logo_url, stalls.logo_url)`).run(id, name, desc, logoUrl || null);
+    if (logoUrl) {
+        try {
+            db.prepare(`UPDATE stalls SET logo_url=? WHERE id=? AND (logo_url IS NULL OR logo_url='')`).run(logoUrl, id);
+        }
+        catch { }
+    }
 }
 function upsertCategory(id, stallId, name, order) {
-    db.prepare(`INSERT OR IGNORE INTO categories (id, stall_id, name, display_order) VALUES (?,?,?,?)`).run(id, stallId, name, order);
+    db.prepare(`INSERT INTO categories (id, stall_id, name, display_order) VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, display_order=excluded.display_order, stall_id=excluded.stall_id`).run(id, stallId, name, order);
 }
 function upsertIngredient(id, name, unit, stock, threshold, cost) {
     db.prepare(`INSERT OR IGNORE INTO ingredients (id, name, unit, current_stock, min_threshold, cost_per_unit) VALUES (?,?,?,?,?,?)`)
         .run(id, name, unit, stock, threshold, cost);
 }
 function upsertMenuItem(id, stallId, catId, name, price, desc, imageUrl) {
-    db.prepare(`INSERT OR IGNORE INTO menu_items (id, stall_id, category_id, name, price, description, image_url) VALUES (?,?,?,?,?,?,?)`)
-        .run(id, stallId, catId, name, price, desc, imageUrl || null);
-    // Backfill image for existing rows created before image_url support
-    if (imageUrl) {
-        db.prepare(`UPDATE menu_items SET image_url=? WHERE id=? AND (image_url IS NULL OR image_url='')`).run(imageUrl, id);
-    }
+    db.prepare(`INSERT INTO menu_items (id, stall_id, category_id, name, price, description, image_url) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, price=excluded.price, description=excluded.description, image_url=excluded.image_url, stall_id=excluded.stall_id, category_id=excluded.category_id`).run(id, stallId, catId, name, price, desc, imageUrl || null);
 }
 function upsertBom(menuItemId, ingredientId, qty) {
     db.prepare(`INSERT OR IGNORE INTO recipe_bom (id, menu_item_id, ingredient_id, quantity_required) VALUES (?,?,?,?)`)
         .run(uuidv4(), menuItemId, ingredientId, qty);
 }
 console.log('[Seed] Seeding CampusBITE...');
-// Clear? No, just insert ignores to allow re-run
 const stall1 = 'stall-001';
 const stall2 = 'stall-002';
-upsertStall(stall1, 'Campus Grill', 'Burgers, Rice Meals & More');
-upsertStall(stall2, 'Brew & Bites', 'Coffee, Milk Tea & Pastries');
-const catBurgers = 'cat-burgers';
-const catRice = 'cat-rice';
-const catDrinks = 'cat-drinks';
-const catPastries = 'cat-pastries';
-upsertCategory(catBurgers, stall1, 'Burgers', 1);
-upsertCategory(catRice, stall1, 'Rice Meals', 2);
-upsertCategory(catDrinks, stall2, 'Drinks', 1);
-upsertCategory(catPastries, stall2, 'Pastries', 2);
-// Ingredients - with realistic units
+// Per clarification: grill->Potato Corner (stall-001), brew->Matees (stall-002)
+upsertStall(stall1, 'Potato Corner', 'World Famous Flavored Fries · Loaded Fries', 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=200&auto=format&fit=crop&q=60');
+upsertStall(stall2, 'Matees', 'Ice Cream · Sundaes · Milkshakes', 'https://images.unsplash.com/photo-1488900128323-21503983a07e?w=200&auto=format&fit=crop&q=60');
+const catIceClassic = 'cat-ice-classic';
+const catIceSundae = 'cat-ice-sundae';
+const catFriesClassic = 'cat-fries-classic';
+const catFriesLoaded = 'cat-fries-loaded';
+upsertCategory(catIceClassic, stall2, 'Classic Scoops', 1);
+upsertCategory(catIceSundae, stall2, 'Sundaes & Shakes', 2);
+upsertCategory(catFriesClassic, stall1, 'Flavored Fries', 1);
+upsertCategory(catFriesLoaded, stall1, 'Loaded Fries', 2);
+// Clean legacy categories if empty
+try {
+    db.prepare(`DELETE FROM categories WHERE id IN ('cat-burgers','cat-rice','cat-drinks','cat-pastries')`).run();
+}
+catch { }
+// Ingredients - Matees (ice cream) + Potato Corner (fries) — keep legacy for migration
+upsertIngredient('ing-milk', 'Fresh Milk', 'ml', 8000, 1000, 0.03);
+upsertIngredient('ing-cream', 'Heavy Cream', 'ml', 6000, 800, 0.08);
+upsertIngredient('ing-sugar', 'Sugar', 'g', 8000, 1000, 0.02);
+upsertIngredient('ing-vanilla', 'Vanilla Syrup', 'ml', 3000, 400, 0.12);
+upsertIngredient('ing-chocolate-syrup', 'Chocolate Syrup', 'ml', 3000, 400, 0.15);
+upsertIngredient('ing-strawberry', 'Strawberry Sauce', 'ml', 2500, 300, 0.14);
+upsertIngredient('ing-potato', 'Potatoes', 'g', 15000, 2000, 0.02);
+upsertIngredient('ing-oil', 'Cooking Oil', 'ml', 8000, 1000, 0.04);
+upsertIngredient('ing-cheese-powder', 'Cheese Powder', 'g', 3000, 400, 0.20);
+upsertIngredient('ing-bbq-powder', 'BBQ Powder', 'g', 3000, 400, 0.18);
+upsertIngredient('ing-sourcream', 'Sour Cream Powder', 'g', 2500, 300, 0.22);
+upsertIngredient('ing-chili', 'Chili Cheese', 'g', 2500, 300, 0.25);
+// Legacy kept for old BOM cleanup
 upsertIngredient('ing-bun', 'Burger Bun', 'pcs', 100, 20, 5);
 upsertIngredient('ing-patty', 'Beef Patty', 'pcs', 80, 15, 25);
 upsertIngredient('ing-cheese', 'Cheese Slice', 'pcs', 120, 20, 8);
-upsertIngredient('ing-lettuce', 'Lettuce', 'g', 5000, 1000, 0.05);
-upsertIngredient('ing-sauce', 'Special Sauce', 'g', 3000, 500, 0.1);
-upsertIngredient('ing-rice', 'Steamed Rice', 'g', 10000, 2000, 0.02);
-upsertIngredient('ing-chicken', 'Fried Chicken', 'pcs', 50, 10, 30);
-upsertIngredient('ing-coffee-beans', 'Coffee Beans', 'g', 2000, 300, 0.5);
-upsertIngredient('ing-milk', 'Fresh Milk', 'ml', 5000, 1000, 0.03);
-upsertIngredient('ing-flour', 'Flour', 'g', 8000, 1500, 0.04);
-upsertIngredient('ing-sugar', 'Sugar', 'g', 5000, 1000, 0.02);
-// Menu Items — with real food photos (not graphic icon) for Kiosk
-upsertMenuItem('item-burger-classic', stall1, catBurgers, 'Classic Burger', 89, '1 patty, cheese, lettuce, sauce', 'https://images.unsplash.com/photo-1568909344668-6f14a07b56a0?w=500&auto=format&fit=crop&q=60');
-upsertMenuItem('item-burger-double', stall1, catBurgers, 'Double Cheeseburger', 139, '2 patties, double cheese', 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=500&auto=format&fit=crop&q=60');
-upsertMenuItem('item-rice-chicken', stall1, catRice, 'Chicken Rice Meal', 99, '1 fried chicken + 250g rice', 'https://images.unsplash.com/photo-1604908177223-81e336fca6a2?w=500&auto=format&fit=crop&q=60');
-upsertMenuItem('item-coffee-latte', stall2, catDrinks, 'Iced Latte', 65, 'Espresso + milk', 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=500&auto=format&fit=crop&q=60');
-upsertMenuItem('item-milk-tea', stall2, catDrinks, 'Milk Tea', 55, 'Classic milk tea', 'https://images.unsplash.com/photo-1558160074-4d7d8bdf4256?w=500&auto=format&fit=crop&q=60');
-upsertMenuItem('item-croissant', stall2, catPastries, 'Butter Croissant', 45, 'Freshly baked', 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=500&auto=format&fit=crop&q=60');
-// BOM Recipes
-// Classic Burger: 1 bun, 1 patty, 1 cheese, 30g lettuce, 20g sauce
-upsertBom('item-burger-classic', 'ing-bun', 1);
-upsertBom('item-burger-classic', 'ing-patty', 1);
-upsertBom('item-burger-classic', 'ing-cheese', 1);
-upsertBom('item-burger-classic', 'ing-lettuce', 30);
-upsertBom('item-burger-classic', 'ing-sauce', 20);
-// Double: 1 bun, 2 patty, 2 cheese, 30g lettuce, 30g sauce
-upsertBom('item-burger-double', 'ing-bun', 1);
-upsertBom('item-burger-double', 'ing-patty', 2);
-upsertBom('item-burger-double', 'ing-cheese', 2);
-upsertBom('item-burger-double', 'ing-lettuce', 30);
-upsertBom('item-burger-double', 'ing-sauce', 30);
-// Chicken Rice: 1 chicken, 250g rice, 15g sauce
-upsertBom('item-rice-chicken', 'ing-chicken', 1);
-upsertBom('item-rice-chicken', 'ing-rice', 250);
-upsertBom('item-rice-chicken', 'ing-sauce', 15);
-// Latte: 15g coffee beans, 200ml milk, 10g sugar
-upsertBom('item-coffee-latte', 'ing-coffee-beans', 15);
-upsertBom('item-coffee-latte', 'ing-milk', 200);
-upsertBom('item-coffee-latte', 'ing-sugar', 10);
-// Milk Tea: 150ml milk, 20g sugar
-upsertBom('item-milk-tea', 'ing-milk', 150);
-upsertBom('item-milk-tea', 'ing-sugar', 20);
-// Croissant: 80g flour, 10g sugar, 20g milk (simplified)
-upsertBom('item-croissant', 'ing-flour', 80);
-upsertBom('item-croissant', 'ing-sugar', 10);
-upsertBom('item-croissant', 'ing-milk', 20);
-function upsertUser(id, username, pin, role, stallId, displayName) {
-    db.prepare(`INSERT OR IGNORE INTO users (id, username, pin, role, stall_id, display_name) VALUES (?,?,?,?,?,?)`)
-        .run(id, username, pin, role, stallId, displayName);
+// Menu Items — swapped per brew->Matees (stall-002), grill->Potato Corner (stall-001)
+upsertMenuItem('item-vanilla-scoop', stall2, catIceClassic, 'Vanilla Scoop', 45, 'Single scoop Madagascar vanilla', 'https://images.unsplash.com/photo-1495147466023-a36482277724?w=500&auto=format&fit=crop&q=60');
+upsertMenuItem('item-choco-scoop', stall2, catIceClassic, 'Choco Scoop', 49, 'Belgian chocolate', 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=500&auto=format&fit=crop&q=60');
+upsertMenuItem('item-strawberry-sundae', stall2, catIceSundae, 'Strawberry Sundae', 89, '2 scoops + strawberry sauce + cream', 'https://images.unsplash.com/photo-1488900128323-21503983a07e?w=500&auto=format&fit=crop&q=60');
+upsertMenuItem('item-plain-fries', stall1, catFriesClassic, 'Plain Fries', 55, 'Crispy classic fries 150g', 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=500&auto=format&fit=crop&q=60');
+upsertMenuItem('item-cheese-fries', stall1, catFriesClassic, 'Cheese Fries', 69, 'Fries + cheese powder', 'https://images.unsplash.com/photo-1585109649139-366815a0d713?w=500&auto=format&fit=crop&q=60');
+upsertMenuItem('item-loaded-fries', stall1, catFriesLoaded, 'Loaded Chili Cheese Fries', 99, 'Fries + chili cheese + sour cream', 'https://images.unsplash.com/photo-1630384060421-c342d74f260f?w=500&auto=format&fit=crop&q=60');
+// Clean legacy items for Matees/Potato demo — FK safe (delete BOM → order_items → menu)
+try {
+    db.prepare(`DELETE FROM recipe_bom WHERE menu_item_id IN ('item-burger-classic','item-burger-double','item-rice-chicken','item-coffee-latte','item-milk-tea','item-croissant')`).run();
 }
-// Users - Hybrid auth: ADMIN manages all, STALL_OWNER limited to own stall
+catch { }
+try {
+    db.prepare(`DELETE FROM order_items WHERE menu_item_id IN ('item-burger-classic','item-burger-double','item-rice-chicken','item-coffee-latte','item-milk-tea','item-croissant')`).run();
+}
+catch { }
+try {
+    db.prepare(`DELETE FROM menu_items WHERE id IN ('item-burger-classic','item-burger-double','item-rice-chicken','item-coffee-latte','item-milk-tea','item-croissant')`).run();
+}
+catch {
+    db.prepare(`UPDATE menu_items SET is_available=0 WHERE id IN ('item-burger-classic','item-burger-double','item-rice-chicken','item-coffee-latte','item-milk-tea','item-croissant')`).run();
+}
+// BOM — Matees
+upsertBom('item-vanilla-scoop', 'ing-milk', 60);
+upsertBom('item-vanilla-scoop', 'ing-cream', 40);
+upsertBom('item-vanilla-scoop', 'ing-sugar', 15);
+upsertBom('item-vanilla-scoop', 'ing-vanilla', 10);
+upsertBom('item-choco-scoop', 'ing-milk', 50);
+upsertBom('item-choco-scoop', 'ing-cream', 40);
+upsertBom('item-choco-scoop', 'ing-sugar', 15);
+upsertBom('item-choco-scoop', 'ing-chocolate-syrup', 20);
+upsertBom('item-strawberry-sundae', 'ing-milk', 80);
+upsertBom('item-strawberry-sundae', 'ing-cream', 60);
+upsertBom('item-strawberry-sundae', 'ing-sugar', 20);
+upsertBom('item-strawberry-sundae', 'ing-strawberry', 30);
+upsertBom('item-strawberry-sundae', 'ing-vanilla', 10);
+// BOM — Potato Corner
+upsertBom('item-plain-fries', 'ing-potato', 150);
+upsertBom('item-plain-fries', 'ing-oil', 20);
+upsertBom('item-cheese-fries', 'ing-potato', 150);
+upsertBom('item-cheese-fries', 'ing-oil', 20);
+upsertBom('item-cheese-fries', 'ing-cheese-powder', 15);
+upsertBom('item-loaded-fries', 'ing-potato', 150);
+upsertBom('item-loaded-fries', 'ing-oil', 20);
+upsertBom('item-loaded-fries', 'ing-chili', 25);
+upsertBom('item-loaded-fries', 'ing-sourcream', 15);
+upsertBom('item-loaded-fries', 'ing-cheese-powder', 10);
+// Legacy BOMs kept for history (no delete to avoid FK)
+function upsertUser(id, username, pin, role, stallId, displayName) {
+    db.prepare(`INSERT INTO users (id, username, pin, role, stall_id, display_name) VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET username=excluded.username, pin=excluded.pin, role=excluded.role, stall_id=excluded.stall_id, display_name=excluded.display_name`).run(id, username, pin, role, stallId, displayName);
+}
+// Users — per request: user-potato and user-matees (brew->Matees stall-002, grill->Potato stall-001)
+try {
+    db.prepare(`DELETE FROM users WHERE id IN ('user-grill','user-brew')`).run();
+}
+catch { }
 upsertUser('user-admin', 'admin', 'admin123', 'ADMIN', null, 'Canteen Manager');
-upsertUser('user-grill', 'grill', 'grill123', 'STALL_OWNER', stall1, 'Campus Grill Owner');
-upsertUser('user-brew', 'brew', 'brew123', 'STALL_OWNER', stall2, 'Brew & Bites Owner');
+upsertUser('user-potato', 'potato', 'potato123', 'STALL_OWNER', stall1, 'Potato Corner Owner');
+upsertUser('user-matees', 'matees', 'matees123', 'STALL_OWNER', stall2, 'Matees Owner');
 console.log('[Seed] Done. Sample data ready.');
-// Quick check
 const counts = {
     stalls: db.prepare(`SELECT count(*) as c FROM stalls`).get().c,
     items: db.prepare(`SELECT count(*) as c FROM menu_items`).get().c,
@@ -101,5 +127,6 @@ const counts = {
     users: db.prepare(`SELECT count(*) as c FROM users`).get().c,
 };
 console.log('[Seed] Counts:', counts);
-console.log('[Seed] Logins: admin/admin123 (ADMIN), grill/grill123 (Campus Grill), brew/brew123 (Brew & Bites)');
+console.log('[Seed] Stalls:', db.prepare(`SELECT id, name FROM stalls`).all().map(s => `${s.id}:${s.name}`).join(', '));
+console.log('[Seed] Logins: admin/admin123 (ADMIN), matees/matees123 (Matees), potato/potato123 (Potato Corner)');
 //# sourceMappingURL=seed.js.map

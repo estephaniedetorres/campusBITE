@@ -100,7 +100,7 @@ function Home() {
         <h3 className="font-serif font-bold text-lg text-stone-900">Quick start</h3>
         <ol className="list-decimal ml-5 mt-3 space-y-2 text-sm text-stone-600">
           <li><code className="bg-stone-100 px-1.5 py-0.5 rounded text-stone-900">/kiosk?stall=stall-001</code> — QR auto-filters stall, add to cart, checkout → `A3X9`.</li>
-          <li><code className="bg-stone-100 px-1.5 py-0.5 rounded text-stone-900">/pos</code> — staff login `grill/grill123`, enter code, Confirm cash → status `CONFIRMED` → stock −.</li>
+          <li><code className="bg-stone-100 px-1.5 py-0.5 rounded text-stone-900">/pos</code> — staff login `potato/potato123`, enter code, Confirm cash → status `CONFIRMED` → stock −.</li>
           <li><code className="bg-stone-100 px-1.5 py-0.5 rounded text-stone-900">/kds</code> — same login → Kanban jumps New → Preparing → Ready.</li>
           <li><code className="bg-stone-100 px-1.5 py-0.5 rounded text-stone-900">/admin</code> → `admin/admin123` → Ingredients/BOM/Audits.</li>
         </ol>

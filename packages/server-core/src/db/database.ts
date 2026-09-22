@@ -112,18 +112,26 @@ if (!schema) {
 }
 rawDb.exec(schema);
 
-// --- MIGRATION: image_url column added after initial schema (Termux old DBs) ---
+// --- MIGRATIONS: image_url + stalls.logo_url (Termux old DBs) ---
 try {
-  // Check if column exists by pragma table_info
   const cols: any[] = rawDb.prepare(`PRAGMA table_info(menu_items)`).all();
   const hasImageUrl = cols.some((c: any) => c.name === 'image_url');
   if (!hasImageUrl) {
     console.log('[DB] Migrating: adding menu_items.image_url');
     rawDb.exec(`ALTER TABLE menu_items ADD COLUMN image_url TEXT`);
-    console.log('[DB] Migration done');
   }
 } catch (e: any) {
-  console.log('[DB] Migration check:', e.message?.slice(0,120));
+  console.log('[DB] Migration image_url:', e.message?.slice(0,120));
+}
+try {
+  const cols: any[] = rawDb.prepare(`PRAGMA table_info(stalls)`).all();
+  const hasLogo = cols.some((c: any) => c.name === 'logo_url');
+  if (!hasLogo) {
+    console.log('[DB] Migrating: adding stalls.logo_url');
+    rawDb.exec(`ALTER TABLE stalls ADD COLUMN logo_url TEXT`);
+  }
+} catch (e: any) {
+  console.log('[DB] Migration logo_url:', e.message?.slice(0,120));
 }
 
 // --- AUTO-SEED: if stalls empty (fresh Termux DB), seed minimal data ---
@@ -158,8 +166,8 @@ try {
       rawDb.prepare(`INSERT OR IGNORE INTO ingredients (id, name, unit, current_stock, min_threshold, cost_per_unit) VALUES ('ing-chicken','Fried Chicken','pcs',50,10,30)`).run();
       rawDb.prepare(`INSERT OR IGNORE INTO ingredients (id, name, unit, current_stock, min_threshold, cost_per_unit) VALUES ('ing-rice','Steamed Rice','g',10000,2000,0.02)`).run();
       rawDb.prepare(`INSERT OR IGNORE INTO users (id, username, pin, role, stall_id, display_name) VALUES ('user-admin','admin','admin123','ADMIN',NULL,'Canteen Manager')`).run();
-      rawDb.prepare(`INSERT OR IGNORE INTO users (id, username, pin, role, stall_id, display_name) VALUES ('user-grill','grill','grill123','STALL_OWNER','stall-001','Campus Grill Owner')`).run();
-      rawDb.prepare(`INSERT OR IGNORE INTO users (id, username, pin, role, stall_id, display_name) VALUES ('user-brew','brew','brew123','STALL_OWNER','stall-002','Brew & Bites Owner')`).run();
+      rawDb.prepare(`INSERT OR IGNORE INTO users (id, username, pin, role, stall_id, display_name) VALUES ('user-potato','potato','potato123','STALL_OWNER','stall-001','Potato Corner Owner')`).run();
+      rawDb.prepare(`INSERT OR IGNORE INTO users (id, username, pin, role, stall_id, display_name) VALUES ('user-matees','matees','matees123','STALL_OWNER','stall-002','Matees Owner')`).run();
       // Menu with images
       rawDb.prepare(`INSERT OR IGNORE INTO menu_items (id, stall_id, category_id, name, price, description, image_url) VALUES ('item-burger-classic','stall-001','cat-burgers','Classic Burger',89,'1 patty, cheese, lettuce, sauce','https://images.unsplash.com/photo-1568909344668-6f14a07b56a0?w=500&auto=format&fit=crop&q=60')`).run();
       rawDb.prepare(`INSERT OR IGNORE INTO menu_items (id, stall_id, category_id, name, price, description, image_url) VALUES ('item-burger-double','stall-001','cat-burgers','Double Cheeseburger',139,'2 patties, double cheese','https://images.unsplash.com/photo-1550547660-d9450f859349?w=500&auto=format&fit=crop&q=60')`).run();

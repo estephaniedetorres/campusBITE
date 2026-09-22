@@ -44,14 +44,25 @@ menuRouter.get('/menu/:id/detail', (req, res) => {
   res.json({ item, bom });
 });
 
-// GET /api/categories?stallId=...
+// GET /api/categories?stallId=... — Kiosk only shows categories with available items
 menuRouter.get('/categories', (req, res) => {
   const { stallId } = req.query as any;
-  let sql = `SELECT * FROM categories`;
-  const params: any[] = [];
-  if (stallId) { sql += ` WHERE stall_id=?`; params.push(stallId); }
-  sql += ` ORDER BY display_order`;
-  res.json(db.prepare(sql).all(...params));
+  const includeEmpty = req.query.includeEmpty === '1';
+  if (includeEmpty || !stallId) {
+    let sql = `SELECT * FROM categories`;
+    const params: any[] = [];
+    if (stallId) { sql += ` WHERE stall_id=?`; params.push(stallId); }
+    sql += ` ORDER BY display_order`;
+    res.json(db.prepare(sql).all(...params));
+  } else {
+    // Only categories that have at least one available menu item (for Kiosk)
+    const rows = db.prepare(`
+      SELECT DISTINCT c.* FROM categories c
+      JOIN menu_items mi ON mi.category_id = c.id AND mi.is_available=1
+      WHERE c.stall_id=? ORDER BY c.display_order
+    `).all(stallId);
+    res.json(rows);
+  }
 });
 
 // GET /api/ingredients (public for now, but admin uses it)

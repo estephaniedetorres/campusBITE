@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS stalls (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     description TEXT,
+    logo_url TEXT,
     is_active INTEGER DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

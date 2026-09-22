@@ -138,7 +138,7 @@ export default function LoginPage() {
               <input
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="admin / grill / brew"
+                placeholder="admin / potato / matees"
                 autoComplete="username"
                 className="w-full bg-white border border-stone-200 rounded-xl px-4 py-3.5 mt-1.5 text-[15px] text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900/10 focus:border-stone-300 transition"
               />
@@ -213,11 +213,11 @@ export default function LoginPage() {
                   <Store size={13} />
                 </span>
                 <div className="text-sm leading-snug min-w-0">
-                  <span className="font-semibold text-stone-900">grill</span>
+                  <span className="font-semibold text-stone-900">potato</span>
                   <span className="text-stone-400 mx-1.5">/</span>
-                  <span className="font-mono text-sm text-stone-700">grill123</span>
+                  <span className="font-mono text-sm text-stone-700">potato123</span>
                   <span className="text-stone-300 mx-1.5">—</span>
-                  <span className="text-stone-600">STALL_OWNER · Campus Grill (stall-001) menu only</span>
+                  <span className="text-stone-600">STALL_OWNER · Potato Corner — fries (stall-001) menu only</span>
                 </div>
               </div>
 
@@ -226,11 +226,11 @@ export default function LoginPage() {
                   <Store size={13} />
                 </span>
                 <div className="text-sm leading-snug min-w-0">
-                  <span className="font-semibold text-stone-900">brew</span>
+                  <span className="font-semibold text-stone-900">matees</span>
                   <span className="text-stone-400 mx-1.5">/</span>
-                  <span className="font-mono text-sm text-stone-700">brew123</span>
+                  <span className="font-mono text-sm text-stone-700">matees123</span>
                   <span className="text-stone-300 mx-1.5">—</span>
-                  <span className="text-stone-600">STALL_OWNER · Brew &amp; Bites (stall-002) menu only</span>
+                  <span className="text-stone-600">STALL_OWNER · Matees — ice cream (stall-002) menu only</span>
                 </div>
               </div>
             </div>

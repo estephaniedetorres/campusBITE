@@ -44,24 +44,14 @@ CampusBITE/
 - `web-client` builds to `dist/` (static HTML/JS/CSS). `server-core` serves it via `express.static`.
 - So the phone serves **both API and UI** from one process.
 
-## Quick Start (Development on Windows)
+## Quick Start
 
 ```bash
-# 1. Install deps (root + workspaces)
 npm install
-
-# 2. Seed database (creates data/campusbite.db with stalls, menu, ingredients, BOM)
 npm run seed --workspace=server-core
-
-# 3. Run server (Express + WS + SQLite) -> http://localhost:3000
-npm run dev --workspace=server-core
-
-# 4. In another terminal, run SPA dev (Vite) -> http://localhost:5173 (proxies /api to 3000)
-npm run dev --workspace=web-client
-
-# 5. Build SPA for phone bundling
-npm run build --workspace=web-client
-# Now server-core also serves the SPA at http://localhost:3000/
+npm run dev --workspace=server-core  # http://localhost:3000
+# in another terminal:
+npm run dev --workspace=web-client   # http://localhost:5173
 ```
 
 ## Running on Android Phone as Server (REQUIRED — phone is the server via Hotspot, Termux)
@@ -92,16 +82,14 @@ bash scripts/phone-server.sh
    pkg install python clang make -y
    npm install better-sqlite3
    ```
-3. **Build & run:**
+3. **Run:**
    ```bash
    npm install
-   npm run build --workspace=web-client
-   npm run build --workspace=server-core
    node packages/server-core/dist/server.js
-   # must show: Network: http://192.168.43.1:3000  Health: http://localhost:3000/api/health
+   # must show: Network: http://192.168.43.1:3000
    ```
 4. **Turn on phone Hotspot** (Settings → Portable Hotspot) **before** starting server or right after — keep it ON.
-5. **Clients:** Other phones/laptops → WiFi → join **phone's hotspot** → browser → `http://192.168.43.1:3000` → Kiosk is **only public** page (`/kiosk?stall=stall-001` via QR). Staff pages `/pos`, `/kds`, `/admin` require login (`admin/admin123`, `grill/grill123`, `brew/brew123`) — server enforces `403` if stall owner tries other stall.
+5. **Clients:** Other phones/laptops → WiFi → join **phone's hotspot** → browser → `http://192.168.43.1:3000` → Kiosk is **only public** page (`/kiosk?stall=stall-001` via QR). Staff pages `/pos`, `/kds`, `/admin` require login (`admin/admin123`, `potato/potato123`, `matees/matees123`) — server enforces `403` if stall owner tries other stall.
 
 ## Running as APK (later, needs Android Studio + JDK 17)
 
@@ -109,7 +97,7 @@ See `packages/mobile-server/README.md` for Foreground Service setup and `./gradl
 
 ## Testing the Flow
 
-1. `/kiosk` — select Campus Grill, add Double Cheeseburger ×2, Checkout → note code e.g., `A3X9`
+1. `/kiosk` — select Potato Corner, add Cheese Fries ×2, Checkout → note code e.g., `A3X9`
 2. `/pos` — enter `A3X9`, confirm cash (triggers BOM deduction, check `/admin` stock decreased)
 3. `/kds` — watch Kanban: New → Preparing → Ready
 4. `/admin` → Ingredients: try Stock-In, Wastage, and EOD Audit (variance = physical − system)
