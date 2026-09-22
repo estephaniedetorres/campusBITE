@@ -108,12 +108,13 @@ export default function KioskPage() {
     <div className="space-y-5 pb-24">
       {qrStall && (
         <>
-          <button onClick={()=>setShowQr(true)} className="w-full fork-card rounded-2xl p-3.5 flex items-center gap-3 hover:shadow-forkHover transition text-left">
-            <div className="w-10 h-10 rounded-xl bg-fork-green text-white flex items-center justify-center shrink-0"><QrCode size={18}/></div>
+          <button onClick={()=>setShowQr(true)} className="mx-auto w-full max-w-md bg-white border border-stone-200 rounded-full p-2 pr-3 flex items-center gap-3 shadow-sm hover:shadow-forkHover transition text-left">
+            <div className="w-9 h-9 rounded-full bg-stone-900 text-white flex items-center justify-center shrink-0"><QrCode size={16}/></div>
             <div className="flex-1 min-w-0">
-              <div className="font-serif font-bold text-sm text-stone-900">{stalls.find(s=>s.id===qrStall)?.name || qrStall} {qrTable && `· Table ${qrTable}`}</div>
+              <div className="font-medium text-sm text-stone-900 truncate">{stalls.find(s=>s.id===qrStall)?.name || qrStall} {qrTable && `· Table ${qrTable}`}</div>
               <div className="text-xs text-stone-500">Tap to show QR</div>
             </div>
+            <span className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-600"><QrCode size={14}/></span>
           </button>
           {showQr && (
             <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={()=>setShowQr(false)}>
