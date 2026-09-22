@@ -114,8 +114,6 @@ export default function KioskPage() {
               <div className="font-serif font-bold text-sm text-stone-900">{stalls.find(s=>s.id===qrStall)?.name || qrStall} {qrTable && `· Table ${qrTable}`}</div>
               <div className="text-xs text-stone-500">Tap to show QR</div>
             </div>
-            <span className="hidden sm:inline text-xs font-medium px-3 py-1.5 rounded-full bg-fork-greenSoft text-fork-green border border-fork-green/10">QR → kiosk?stall={qrStall}</span>
-            <span className="sm:hidden text-xs font-semibold text-fork-green">View QR</span>
           </button>
           {showQr && (
             <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={()=>setShowQr(false)}>
