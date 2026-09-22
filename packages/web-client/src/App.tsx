@@ -90,13 +90,6 @@ function Home() {
         </div>
       </div>
 
-      <div className="fork-card rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div>
-          <div className="font-serif font-bold text-stone-900">Scan. Order. Pick up.</div>
-          <div className="text-sm text-stone-500">Kiosk is public — no account needed. Open via QR at the stall.</div>
-        </div>
-        <a href="/kiosk" className="shrink-0 bg-stone-900 text-white px-6 py-3 rounded-full font-semibold">Start ordering</a>
-      </div>
     </div>
   );
 }
