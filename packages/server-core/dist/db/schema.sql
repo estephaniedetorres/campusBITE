@@ -42,6 +42,18 @@ CREATE TABLE IF NOT EXISTS menu_items (
     FOREIGN KEY(category_id) REFERENCES categories(id) ON DELETE CASCADE
 );
 
+-- 3b. ITEM VARIANTS (McDo style: Small/Medium/Large)
+CREATE TABLE IF NOT EXISTS item_variants (
+    id TEXT PRIMARY KEY,
+    menu_item_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    price REAL NOT NULL CHECK(price >= 0),
+    is_available INTEGER DEFAULT 1,
+    display_order INTEGER DEFAULT 0,
+    FOREIGN KEY(menu_item_id) REFERENCES menu_items(id) ON DELETE CASCADE,
+    UNIQUE(menu_item_id, name)
+);
+
 -- 4. INGREDIENTS (Inventory)
 CREATE TABLE IF NOT EXISTS ingredients (
     id TEXT PRIMARY KEY,
@@ -80,16 +92,19 @@ CREATE INDEX IF NOT EXISTS idx_orders_pickup ON orders(pickup_code);
 CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
 CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at);
 
--- 7. ORDER ITEMS
+-- 7. ORDER ITEMS (with variant for McDo sizes)
 CREATE TABLE IF NOT EXISTS order_items (
     id TEXT PRIMARY KEY,
     order_id TEXT NOT NULL,
     menu_item_id TEXT NOT NULL,
+    variant_id TEXT,
+    variant_name TEXT,
     quantity INTEGER NOT NULL CHECK(quantity > 0),
     unit_price REAL NOT NULL,
     subtotal REAL NOT NULL,
     FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE,
-    FOREIGN KEY(menu_item_id) REFERENCES menu_items(id)
+    FOREIGN KEY(menu_item_id) REFERENCES menu_items(id),
+    FOREIGN KEY(variant_id) REFERENCES item_variants(id) ON DELETE SET NULL
 );
 
 -- 8. STOCK LOGS (audit trail)

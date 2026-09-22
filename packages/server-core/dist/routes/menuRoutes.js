@@ -33,9 +33,18 @@ menuRouter.get('/menu', (req, res) => {
     }
     sql += ` ORDER BY c.display_order, mi.name`;
     const items = db.prepare(sql).all(...params);
+    // Attach variants (McDo sizes) for each item
+    for (const it of items) {
+        try {
+            it.variants = db.prepare(`SELECT * FROM item_variants WHERE menu_item_id=? ORDER BY display_order, price`).all(it.id);
+        }
+        catch {
+            it.variants = [];
+        }
+    }
     res.json(items);
 });
-// GET /api/menu/:id/detail (with BOM breakdown)
+// GET /api/menu/:id/detail (with BOM breakdown + variants)
 menuRouter.get('/menu/:id/detail', (req, res) => {
     const item = db.prepare(`SELECT * FROM menu_items WHERE id=?`).get(req.params.id);
     if (!item)
@@ -45,7 +54,12 @@ menuRouter.get('/menu/:id/detail', (req, res) => {
     FROM recipe_bom rb JOIN ingredients i ON i.id=rb.ingredient_id
     WHERE rb.menu_item_id=?
   `).all(req.params.id);
-    res.json({ item, bom });
+    let variants = [];
+    try {
+        variants = db.prepare(`SELECT * FROM item_variants WHERE menu_item_id=? ORDER BY display_order`).all(req.params.id);
+    }
+    catch { }
+    res.json({ item, bom, variants });
 });
 // GET /api/categories?stallId=... — Kiosk only shows categories with available items
 menuRouter.get('/categories', (req, res) => {
@@ -283,6 +297,68 @@ menuRouter.delete('/menu/:id', requireAuth, (req, res) => {
     if (!enforceStallAccess(req, res, existing.stall_id))
         return;
     db.prepare(`DELETE FROM menu_items WHERE id=?`).run(req.params.id);
+    res.json({ ok: true });
+});
+// ---- VARIANTS (McDo Small/Medium/Large) ----
+menuRouter.get('/menu/:id/variants', (req, res) => {
+    const item = db.prepare(`SELECT * FROM menu_items WHERE id=?`).get(req.params.id);
+    if (!item)
+        return res.status(404).json({ error: 'Menu item not found' });
+    const variants = db.prepare(`SELECT * FROM item_variants WHERE menu_item_id=? ORDER BY display_order, price`).all(req.params.id);
+    res.json(variants);
+});
+menuRouter.post('/menu/:id/variants', requireAuth, (req, res) => {
+    const item = db.prepare(`SELECT * FROM menu_items WHERE id=?`).get(req.params.id);
+    if (!item)
+        return res.status(404).json({ error: 'Menu item not found' });
+    if (!enforceStallAccess(req, res, item.stall_id))
+        return;
+    const schema = z.object({ name: z.string().min(1), price: z.number().nonnegative(), isAvailable: z.number().int().min(0).max(1).optional(), displayOrder: z.number().int().optional() });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success)
+        return res.status(400).json({ error: parsed.error.issues });
+    const id = `var-${req.params.id}-${parsed.data.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now().toString(36).slice(-4)}`;
+    try {
+        db.prepare(`INSERT INTO item_variants (id, menu_item_id, name, price, is_available, display_order) VALUES (?,?,?,?,?,?)`).run(id, req.params.id, parsed.data.name, parsed.data.price, parsed.data.isAvailable ?? 1, parsed.data.displayOrder ?? 0);
+        res.status(201).json(db.prepare(`SELECT * FROM item_variants WHERE id=?`).get(id));
+    }
+    catch (e) {
+        res.status(409).json({ error: e.message });
+    }
+});
+menuRouter.patch('/variants/:id', requireAuth, (req, res) => {
+    const variant = db.prepare(`SELECT * FROM item_variants WHERE id=?`).get(req.params.id);
+    if (!variant)
+        return res.status(404).json({ error: 'Variant not found' });
+    const item = db.prepare(`SELECT * FROM menu_items WHERE id=?`).get(variant.menu_item_id);
+    if (!enforceStallAccess(req, res, item.stall_id))
+        return;
+    const schema = z.object({ name: z.string().min(1).optional(), price: z.number().nonnegative().optional(), isAvailable: z.number().int().min(0).max(1).optional(), displayOrder: z.number().int().optional() });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success)
+        return res.status(400).json({ error: parsed.error.issues });
+    const map = { name: 'name', price: 'price', isAvailable: 'is_available', displayOrder: 'display_order' };
+    const fields = [];
+    const vals = [];
+    for (const [k, v] of Object.entries(parsed.data))
+        if (v !== undefined) {
+            fields.push(`${map[k]}=?`);
+            vals.push(v);
+        }
+    if (fields.length === 0)
+        return res.json(variant);
+    vals.push(req.params.id);
+    db.prepare(`UPDATE item_variants SET ${fields.join(',')} WHERE id=?`).run(...vals);
+    res.json(db.prepare(`SELECT * FROM item_variants WHERE id=?`).get(req.params.id));
+});
+menuRouter.delete('/variants/:id', requireAuth, (req, res) => {
+    const variant = db.prepare(`SELECT * FROM item_variants WHERE id=?`).get(req.params.id);
+    if (!variant)
+        return res.status(404).json({ error: 'Variant not found' });
+    const item = db.prepare(`SELECT * FROM menu_items WHERE id=?`).get(variant.menu_item_id);
+    if (!enforceStallAccess(req, res, item.stall_id))
+        return;
+    db.prepare(`DELETE FROM item_variants WHERE id=?`).run(req.params.id);
     res.json({ ok: true });
 });
 //# sourceMappingURL=menuRoutes.js.map

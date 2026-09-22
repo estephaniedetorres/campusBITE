@@ -29,6 +29,10 @@ function upsertBom(menuItemId, ingredientId, qty) {
     db.prepare(`INSERT OR IGNORE INTO recipe_bom (id, menu_item_id, ingredient_id, quantity_required) VALUES (?,?,?,?)`)
         .run(uuidv4(), menuItemId, ingredientId, qty);
 }
+function upsertVariant(menuItemId, name, price, displayOrder) {
+    const id = `var-${menuItemId}-${name.toLowerCase()}`;
+    db.prepare(`INSERT INTO item_variants (id, menu_item_id, name, price, display_order) VALUES (?,?,?,?,?) ON CONFLICT(menu_item_id, name) DO UPDATE SET price=excluded.price, display_order=excluded.display_order`).run(id, menuItemId, name, price, displayOrder);
+}
 console.log('[Seed] Seeding CampusBITE...');
 const stall1 = 'stall-001';
 const stall2 = 'stall-002';
@@ -72,6 +76,16 @@ upsertMenuItem('item-strawberry-sundae', stall2, catIceSundae, 'Strawberry Sunda
 upsertMenuItem('item-plain-fries', stall1, catFriesClassic, 'Plain Fries', 55, 'Crispy classic fries 150g', 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=500&auto=format&fit=crop&q=60', 4.7, 142);
 upsertMenuItem('item-cheese-fries', stall1, catFriesClassic, 'Cheese Fries', 69, 'Fries + cheese powder', 'https://images.unsplash.com/photo-1585109649139-366815a0d713?w=500&auto=format&fit=crop&q=60', 4.8, 98);
 upsertMenuItem('item-loaded-fries', stall1, catFriesLoaded, 'Loaded Chili Cheese Fries', 99, 'Fries + chili cheese + sour cream', 'https://images.unsplash.com/photo-1630384060421-c342d74f260f?w=500&auto=format&fit=crop&q=60', 4.9, 76);
+// Variants — McDo style for Potato Corner fries (Small/Medium/Large)
+upsertVariant('item-plain-fries', 'Small', 55, 1);
+upsertVariant('item-plain-fries', 'Medium', 75, 2);
+upsertVariant('item-plain-fries', 'Large', 95, 3);
+upsertVariant('item-cheese-fries', 'Small', 69, 1);
+upsertVariant('item-cheese-fries', 'Medium', 89, 2);
+upsertVariant('item-cheese-fries', 'Large', 109, 3);
+upsertVariant('item-loaded-fries', 'Small', 99, 1);
+upsertVariant('item-loaded-fries', 'Medium', 119, 2);
+upsertVariant('item-loaded-fries', 'Large', 139, 3);
 // Clean legacy items for Matees/Potato demo — FK safe (delete BOM → order_items → menu)
 try {
     db.prepare(`DELETE FROM recipe_bom WHERE menu_item_id IN ('item-burger-classic','item-burger-double','item-rice-chicken','item-coffee-latte','item-milk-tea','item-croissant')`).run();

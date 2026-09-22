@@ -19,7 +19,7 @@ export function createOrderRouter(wsGateway: WSGateway) {
 
   const createOrderSchema = z.object({
     stallId: z.string().min(1),
-    items: z.array(z.object({ menuItemId: z.string(), quantity: z.number().int().positive() })).min(1),
+    items: z.array(z.object({ menuItemId: z.string(), variantId: z.string().optional(), quantity: z.number().int().positive() })).min(1),
     customerNotes: z.string().optional(),
   });
 
@@ -34,17 +34,28 @@ export function createOrderRouter(wsGateway: WSGateway) {
     const stall = db.prepare(`SELECT id FROM stalls WHERE id=?`).get(stallId);
     if (!stall) return res.status(404).json({ error: 'Stall not found' });
 
-    // Compute total + validate items availability + fetch prices + enforce per-stall cart (must checkout before switching)
+    // Compute total + variant handling (McDo Small/Medium/Large)
     let total = 0;
-    const enriched: { menuItemId: string; quantity: number; unitPrice: number; subtotal: number }[] = [];
+    const enriched: { menuItemId: string; variantId?: string; variantName?: string; quantity: number; unitPrice: number; subtotal: number }[] = [];
     for (const it of items) {
       const menuItem = db.prepare(`SELECT id, price, is_available, stall_id FROM menu_items WHERE id=?`).get(it.menuItemId) as any;
       if (!menuItem) return res.status(404).json({ error: `Menu item ${it.menuItemId} not found` });
       if (!menuItem.is_available) return res.status(400).json({ error: `Item ${it.menuItemId} not available` });
-      if (menuItem.stall_id !== stallId) return res.status(400).json({ error: `All items must be from the same stall. Item ${it.menuItemId} belongs to ${menuItem.stall_id}, order is for ${stallId}. Please checkout current cart before ordering from another stall.` });
-      const subtotal = menuItem.price * it.quantity;
+      if (menuItem.stall_id !== stallId) return res.status(400).json({ error: `All items must be from the same stall.` });
+      let unitPrice = menuItem.price;
+      let variantName: string | undefined;
+      let variantId: string | undefined;
+      if ((it as any).variantId) {
+        const variant = db.prepare(`SELECT * FROM item_variants WHERE id=? AND menu_item_id=?`).get((it as any).variantId, it.menuItemId) as any;
+        if (!variant) return res.status(404).json({ error: `Variant ${(it as any).variantId} not found` });
+        if (!variant.is_available) return res.status(400).json({ error: `Variant ${variant.name} not available` });
+        unitPrice = variant.price;
+        variantName = variant.name;
+        variantId = variant.id;
+      }
+      const subtotal = unitPrice * it.quantity;
       total += subtotal;
-      enriched.push({ menuItemId: it.menuItemId, quantity: it.quantity, unitPrice: menuItem.price, subtotal });
+      enriched.push({ menuItemId: it.menuItemId, variantId, variantName, quantity: it.quantity, unitPrice, subtotal });
     }
 
     // Generate unique pickup code (retry if collision)
@@ -58,15 +69,15 @@ export function createOrderRouter(wsGateway: WSGateway) {
     const orderId = uuidv4();
     const now = new Date().toISOString();
 
-    // Transaction: insert order + items
+    // Transaction: insert order + items (with variant)
     const createTx = db.transaction(() => {
       db.prepare(`INSERT INTO orders (id, pickup_code, stall_id, total_amount, status, customer_notes, created_at, updated_at)
                   VALUES (?,?,?,?,?,?,?,?)`)
         .run(orderId, pickupCode, stallId, total, 'PENDING_PAYMENT', customerNotes || null, now, now);
       for (const e of enriched) {
-        db.prepare(`INSERT INTO order_items (id, order_id, menu_item_id, quantity, unit_price, subtotal)
-                    VALUES (?,?,?,?,?,?)`)
-          .run(uuidv4(), orderId, e.menuItemId, e.quantity, e.unitPrice, e.subtotal);
+        db.prepare(`INSERT INTO order_items (id, order_id, menu_item_id, variant_id, variant_name, quantity, unit_price, subtotal)
+                    VALUES (?,?,?,?,?,?,?,?)`)
+          .run(uuidv4(), orderId, e.menuItemId, e.variantId || null, e.variantName || null, e.quantity, e.unitPrice, e.subtotal);
       }
     });
     createTx();

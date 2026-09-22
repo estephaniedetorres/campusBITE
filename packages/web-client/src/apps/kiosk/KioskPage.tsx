@@ -88,18 +88,41 @@ export default function KioskPage() {
     setActiveCat('all');
   };
 
-  const add = (id: string) => setCart(m => new Map(m).set(id, (m.get(id) || 0) + 1));
-  const sub = (id: string) => setCart(m => {
-    const n = new Map(m); const v = (n.get(id) || 0) - 1; if (v <= 0) n.delete(id); else n.set(id, v); return n;
+  const add = (id: string, variant?: any) => {
+    const item:any = menu.find(i=> i.id===id);
+    // McDo style: if item has variants and no variant selected, open modal
+    if (item?.variants?.length && !variant) {
+      setSelectedVariantItem(item);
+      return;
+    }
+    const key = variant ? `${id}::${variant.id}` : id;
+    setCart(m => new Map(m).set(key, (m.get(key) || 0) + 1));
+    if (variant) setSelectedVariantItem(null);
+  };
+  const sub = (key: string) => setCart(m => {
+    const n = new Map(m); const v = (n.get(key) || 0) - 1; if (v <= 0) n.delete(key); else n.set(key, v); return n;
   });
+  const addByKey = (key: string) => setCart(m => new Map(m).set(key, (m.get(key) || 0) + 1));
 
-  const cartItems = [...cart.entries()].map(([id, qty]) => {
-    const item = menu.find(i => i.id === id);
+  // Cart now supports variants: key is "itemId::variantId" or "itemId"
+  const [selectedVariantItem, setSelectedVariantItem] = useState<(MenuItem & { variants?: any[] }) | null>(null);
+
+  const cartItems = [...cart.entries()].map(([key, qty]) => {
+    const [id, variantId] = key.split('::');
+    const item: any = menu.find(i => i.id === id);
     if (!item) return null as any;
-    return { ...item, qty, subtotal: item.price * qty };
-  }).filter(Boolean) as (MenuItem & { qty: number; subtotal: number })[];
+    const variant = variantId ? (item.variants || []).find((v:any)=> v.id===variantId) : null;
+    const price = variant ? variant.price : item.price;
+    return { ...item, variantId, variantName: variant?.name, price, qty, subtotal: price * qty, cartKey: key };
+  }).filter(Boolean) as (MenuItem & { qty: number; subtotal: number; variantId?: string; variantName?: string; cartKey: string; price: number })[];
   const total = cartItems.reduce((s, i) => s + i.subtotal, 0);
-  const filtered = activeCat === 'all' ? menu : menu.filter(m => m.category_id === activeCat);
+  const filteredBase = activeCat === 'all' ? menu : menu.filter(m => m.category_id === activeCat);
+  // Favorites first for easy checkout
+  const filtered = [...filteredBase].sort((a:any,b:any) => {
+    const fa = favorites.has(a.id) ? 1 : 0;
+    const fb = favorites.has(b.id) ? 1 : 0;
+    return fb - fa;
+  });
 
   async function checkout() {
     if (cartItems.length === 0) return;
@@ -107,7 +130,7 @@ export default function KioskPage() {
     try {
       const res: any = await api.post('/api/orders', {
         stallId,
-        items: cartItems.map(i => ({ menuItemId: i.id, quantity: i.qty })),
+        items: cartItems.map(i => ({ menuItemId: i.id, variantId: (i as any).variantId, quantity: i.qty })),
       });
       setLastOrder(res);
       setLiveStatus(res.order.status);
@@ -207,21 +230,28 @@ export default function KioskPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filtered.map(item => {
-          const qty = cart.get(item.id) || 0;
+        {filtered.map((item:any) => {
+          const hasVariants = item.variants && item.variants.length > 0;
+          // For variant items, check cart keys with variant
+          const qty = hasVariants
+            ? [...cart.entries()].filter(([k])=> k.startsWith(item.id+'::') || k===item.id).reduce((s,[,v])=> s+v, 0)
+            : (cart.get(item.id) || 0);
           return (
             <div key={item.id} className="fork-card rounded-[20px] overflow-hidden group hover:shadow-forkHover transition">
-              <div className="relative h-44 overflow-hidden bg-stone-100">
+              <div className="relative h-44 overflow-hidden bg-stone-100 cursor-pointer" onClick={()=> hasVariants && setSelectedVariantItem(item)}>
                 <img src={getMenuImage(item)} alt={item.name} className="w-full h-full object-cover group-hover:scale-[1.03] transition duration-500" />
-                <button onClick={() => toggleFav(item.id)} className={`absolute top-3 right-3 w-8 h-8 rounded-full backdrop-blur flex items-center justify-center border transition ${favorites.has(item.id) ? 'bg-red-500 text-white border-red-500' : 'bg-white/90 text-stone-400 hover:text-red-500 border-stone-200'}`}><Heart size={14} fill={favorites.has(item.id) ? 'currentColor' : 'none'} /></button>
-                <span className="absolute bottom-3 left-3 bg-stone-900 text-white text-xs font-semibold px-2.5 py-1 rounded-full">₱{item.price}</span>
+                <button onClick={(e)=>{ e.stopPropagation(); toggleFav(item.id); }} className={`absolute top-3 right-3 w-8 h-8 rounded-full backdrop-blur flex items-center justify-center border transition ${favorites.has(item.id) ? 'bg-red-500 text-white border-red-500' : 'bg-white/90 text-stone-400 hover:text-red-500 border-stone-200'}`}><Heart size={14} fill={favorites.has(item.id) ? 'currentColor' : 'none'} /></button>
+                <span className="absolute bottom-3 left-3 bg-stone-900 text-white text-xs font-semibold px-2.5 py-1 rounded-full">₱{item.price}{hasVariants && <span className="opacity-70"> ›</span>}</span>
+                {hasVariants && <span className="absolute top-3 left-3 bg-white/90 backdrop-blur text-stone-900 text-xs font-semibold px-2 py-1 rounded-full border">Sizes</span>}
               </div>
               <div className="p-4">
                 <div className="font-serif font-bold text-stone-900 leading-tight line-clamp-1">{item.name}</div>
                 <div className="text-xs text-stone-500 line-clamp-2 mt-1 min-h-[32px]">{item.description}</div>
                 <div className="flex items-center justify-between mt-3">
                   <span className="text-xs text-stone-500 flex items-center gap-1"><Star size={12} className="text-amber-400 fill-amber-400"/> {item.rating != null ? Number(item.rating).toFixed(1) : '—'} · {item.category_name || 'Popular'} · {item.rating_count ?? 0}</span>
-                  {qty === 0 ? (
+                  {hasVariants ? (
+                    <button onClick={()=>setSelectedVariantItem(item)} className="px-3 py-1.5 rounded-full bg-stone-900 text-white text-xs font-semibold hover:bg-stone-800">Choose size</button>
+                  ) : qty === 0 ? (
                     <button onClick={()=>add(item.id)} className="w-9 h-9 rounded-full bg-stone-900 text-white flex items-center justify-center hover:bg-stone-800"><Plus size={16}/></button>
                   ) : (
                     <div className="flex items-center gap-1 bg-stone-900 text-white rounded-full p-1">
@@ -237,11 +267,48 @@ export default function KioskPage() {
         })}
       </div>
 
+      {/* McDo size modal — Small/Medium/Large for Potato Corner */}
+      {selectedVariantItem && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4" onClick={()=>setSelectedVariantItem(null)}>
+          <div className="bg-white rounded-t-[24px] sm:rounded-[24px] w-full max-w-md overflow-hidden" onClick={e=>e.stopPropagation()}>
+            <div className="p-5">
+              <div className="w-10 h-1.5 bg-stone-200 rounded-full mx-auto mb-4 sm:hidden"/>
+              <div className="flex gap-4">
+                <img src={getMenuImage(selectedVariantItem)} alt={selectedVariantItem.name} className="w-20 h-20 rounded-xl object-cover bg-stone-100" />
+                <div>
+                  <div className="font-serif font-bold text-stone-900">{selectedVariantItem.name}</div>
+                  <div className="text-xs text-stone-500 mt-1 line-clamp-2">{selectedVariantItem.description}</div>
+                  <div className="text-xs text-stone-500 mt-1 flex items-center gap-1"><Star size={12} className="text-amber-400 fill-amber-400"/> {(selectedVariantItem as any).rating?.toFixed(1) || '4.9'} · {(selectedVariantItem as any).rating_count || 0}</div>
+                </div>
+              </div>
+              <div className="mt-5 space-y-2">
+                <div className="text-sm font-semibold text-stone-900">Choose size</div>
+                {(selectedVariantItem.variants || []).map((v:any)=>(
+                  <button key={v.id} onClick={()=>add(selectedVariantItem.id, v)} className="w-full flex items-center justify-between p-3 rounded-2xl border border-stone-200 hover:border-stone-900 hover:bg-stone-50 text-left">
+                    <div>
+                      <div className="font-medium text-sm text-stone-900">{v.name}</div>
+                      <div className="text-xs text-stone-500">₱{v.price}</div>
+                    </div>
+                    <div className="w-8 h-8 rounded-full bg-stone-900 text-white flex items-center justify-center"><Plus size={14}/></div>
+                  </button>
+                ))}
+                {(!selectedVariantItem.variants || selectedVariantItem.variants.length===0) && (
+                  <div className="text-sm text-stone-500 py-4 text-center">No sizes — add directly</div>
+                )}
+              </div>
+            </div>
+            <div className="p-4 border-t border-stone-100 flex gap-2">
+              <button onClick={()=>setSelectedVariantItem(null)} className="flex-1 py-3 rounded-full border border-stone-200 font-medium">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 pb-safe">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
           <div className="flex-1 min-w-0">
             <div className="text-sm font-semibold text-stone-900 flex items-center gap-2"><ShoppingCart size={16}/> {cartItems.length} items · ₱{total.toFixed(2)} {currentStall && cartItems.length>0 && <span className="hidden sm:inline text-stone-500">· {currentStall.name}</span>}</div>
-            <div className="text-xs text-stone-500 truncate">{cartItems.map(i=>`${i.name} ×${i.qty}`).join(' · ') || 'Empty cart'}</div>
+            <div className="text-xs text-stone-500 truncate">{cartItems.map(i=> `${i.name}${(i as any).variantName ? ` (${(i as any).variantName})` : ''} ×${i.qty}`).join(' · ') || 'Empty cart — hearted first'}</div>
           </div>
           <button disabled={cartItems.length===0 || loading} onClick={checkout}
             className="shrink-0 bg-stone-900 disabled:bg-stone-200 disabled:text-stone-400 text-white font-semibold px-6 py-3 rounded-full">

@@ -145,6 +145,17 @@ try {
 } catch (e: any) {
   console.log('[DB] Migration logo_url/rating:', e.message?.slice(0,120));
 }
+try {
+  const cols: any[] = rawDb.prepare(`PRAGMA table_info(order_items)`).all();
+  const hasVariant = cols.some((c: any) => c.name === 'variant_id');
+  if (!hasVariant) {
+    console.log('[DB] Migrating: adding order_items.variant_id/variant_name');
+    rawDb.exec(`ALTER TABLE order_items ADD COLUMN variant_id TEXT`);
+    rawDb.exec(`ALTER TABLE order_items ADD COLUMN variant_name TEXT`);
+  }
+} catch (e: any) {
+  console.log('[DB] Migration variant:', e.message?.slice(0,120));
+}
 
 // --- AUTO-SEED: if stalls empty (fresh Termux DB), seed minimal data ---
 try {
@@ -166,24 +177,24 @@ try {
           break;
         }
       }
-      // Inline minimal seed (ensures login/menus work even if seed.js not executed)
-      rawDb.prepare(`INSERT OR IGNORE INTO stalls (id, name, description) VALUES ('stall-001','Campus Grill','Burgers, Rice Meals & More')`).run();
-      rawDb.prepare(`INSERT OR IGNORE INTO stalls (id, name, description) VALUES ('stall-002','Brew & Bites','Coffee, Milk Tea & Pastries')`).run();
-      rawDb.prepare(`INSERT OR IGNORE INTO categories (id, stall_id, name, display_order) VALUES ('cat-burgers','stall-001','Burgers',1)`).run();
-      rawDb.prepare(`INSERT OR IGNORE INTO categories (id, stall_id, name, display_order) VALUES ('cat-rice','stall-001','Rice Meals',2)`).run();
-      rawDb.prepare(`INSERT OR IGNORE INTO categories (id, stall_id, name, display_order) VALUES ('cat-drinks','stall-002','Drinks',1)`).run();
-      rawDb.prepare(`INSERT OR IGNORE INTO categories (id, stall_id, name, display_order) VALUES ('cat-pastries','stall-002','Pastries',2)`).run();
-      rawDb.prepare(`INSERT OR IGNORE INTO ingredients (id, name, unit, current_stock, min_threshold, cost_per_unit) VALUES ('ing-bun','Burger Bun','pcs',100,20,5)`).run();
-      rawDb.prepare(`INSERT OR IGNORE INTO ingredients (id, name, unit, current_stock, min_threshold, cost_per_unit) VALUES ('ing-patty','Beef Patty','pcs',80,15,25)`).run();
-      rawDb.prepare(`INSERT OR IGNORE INTO ingredients (id, name, unit, current_stock, min_threshold, cost_per_unit) VALUES ('ing-chicken','Fried Chicken','pcs',50,10,30)`).run();
-      rawDb.prepare(`INSERT OR IGNORE INTO ingredients (id, name, unit, current_stock, min_threshold, cost_per_unit) VALUES ('ing-rice','Steamed Rice','g',10000,2000,0.02)`).run();
+      // Inline minimal seed for Matees & Potato Corner
+      rawDb.prepare(`INSERT OR IGNORE INTO stalls (id, name, description) VALUES ('stall-001','Potato Corner','World Famous Flavored Fries · Loaded Fries')`).run();
+      rawDb.prepare(`INSERT OR IGNORE INTO stalls (id, name, description) VALUES ('stall-002','Matees','Ice Cream · Sundaes · Milkshakes')`).run();
+      rawDb.prepare(`INSERT OR IGNORE INTO categories (id, stall_id, name, display_order) VALUES ('cat-fries-classic','stall-001','Flavored Fries',1)`).run();
+      rawDb.prepare(`INSERT OR IGNORE INTO categories (id, stall_id, name, display_order) VALUES ('cat-fries-loaded','stall-001','Loaded Fries',2)`).run();
+      rawDb.prepare(`INSERT OR IGNORE INTO categories (id, stall_id, name, display_order) VALUES ('cat-ice-classic','stall-002','Classic Scoops',1)`).run();
+      rawDb.prepare(`INSERT OR IGNORE INTO categories (id, stall_id, name, display_order) VALUES ('cat-ice-sundae','stall-002','Sundaes & Shakes',2)`).run();
+      rawDb.prepare(`INSERT OR IGNORE INTO ingredients (id, name, unit, current_stock, min_threshold, cost_per_unit) VALUES ('ing-potato','Potatoes','g',15000,2000,0.02)`).run();
+      rawDb.prepare(`INSERT OR IGNORE INTO ingredients (id, name, unit, current_stock, min_threshold, cost_per_unit) VALUES ('ing-oil','Cooking Oil','ml',8000,1000,0.04)`).run();
+      rawDb.prepare(`INSERT OR IGNORE INTO ingredients (id, name, unit, current_stock, min_threshold, cost_per_unit) VALUES ('ing-milk','Fresh Milk','ml',8000,1000,0.03)`).run();
+      rawDb.prepare(`INSERT OR IGNORE INTO ingredients (id, name, unit, current_stock, min_threshold, cost_per_unit) VALUES ('ing-cream','Heavy Cream','ml',6000,800,0.08)`).run();
       rawDb.prepare(`INSERT OR IGNORE INTO users (id, username, pin, role, stall_id, display_name) VALUES ('user-admin','admin','admin123','ADMIN',NULL,'Canteen Manager')`).run();
       rawDb.prepare(`INSERT OR IGNORE INTO users (id, username, pin, role, stall_id, display_name) VALUES ('user-potato','potato','potato123','STALL_OWNER','stall-001','Potato Corner Owner')`).run();
       rawDb.prepare(`INSERT OR IGNORE INTO users (id, username, pin, role, stall_id, display_name) VALUES ('user-matees','matees','matees123','STALL_OWNER','stall-002','Matees Owner')`).run();
-      // Menu with images
-      rawDb.prepare(`INSERT OR IGNORE INTO menu_items (id, stall_id, category_id, name, price, description, image_url) VALUES ('item-burger-classic','stall-001','cat-burgers','Classic Burger',89,'1 patty, cheese, lettuce, sauce','https://images.unsplash.com/photo-1568909344668-6f14a07b56a0?w=500&auto=format&fit=crop&q=60')`).run();
-      rawDb.prepare(`INSERT OR IGNORE INTO menu_items (id, stall_id, category_id, name, price, description, image_url) VALUES ('item-burger-double','stall-001','cat-burgers','Double Cheeseburger',139,'2 patties, double cheese','https://images.unsplash.com/photo-1550547660-d9450f859349?w=500&auto=format&fit=crop&q=60')`).run();
-      rawDb.prepare(`INSERT OR IGNORE INTO menu_items (id, stall_id, category_id, name, price, description, image_url) VALUES ('item-rice-chicken','stall-001','cat-rice','Chicken Rice Meal',99,'1 fried chicken + 250g rice','https://images.unsplash.com/photo-1604908177223-81e336fca6a2?w=500&auto=format&fit=crop&q=60')`).run();
+      rawDb.prepare(`INSERT OR IGNORE INTO menu_items (id, stall_id, category_id, name, price, description, image_url) VALUES ('item-vanilla-scoop','stall-002','cat-ice-classic','Vanilla Scoop',45,'Single scoop Madagascar vanilla','https://images.unsplash.com/photo-1495147466023-a36482277724?w=500&auto=format&fit=crop&q=60')`).run();
+      rawDb.prepare(`INSERT OR IGNORE INTO menu_items (id, stall_id, category_id, name, price, description, image_url) VALUES ('item-choco-scoop','stall-002','cat-ice-classic','Choco Scoop',49,'Belgian chocolate','https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=500&auto=format&fit=crop&q=60')`).run();
+      rawDb.prepare(`INSERT OR IGNORE INTO menu_items (id, stall_id, category_id, name, price, description, image_url) VALUES ('item-strawberry-sundae','stall-002','cat-ice-sundae','Strawberry Sundae',89,'2 scoops + strawberry sauce','https://images.unsplash.com/photo-1488900128323-21503983a07e?w=500&auto=format&fit=crop&q=60')`).run();
+      rawDb.prepare(`INSERT OR IGNORE INTO menu_items (id, stall_id, category_id, name, price, description, image_url) VALUES ('item-plain-fries','stall-001','cat-fries-classic','Plain Fries',55,'Crispy classic fries 150g','https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=500&auto=format&fit=crop&q=60')`).run();
       console.log('[DB] Auto-seed minimal done');
     } catch (e:any) { console.log('[DB] Auto-seed failed:', e.message?.slice(0,200)); }
   } else {
