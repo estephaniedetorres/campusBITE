@@ -31,7 +31,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-stone-200 header-safe">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4">
           <Link to="/" className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-stone-900 flex items-center justify-center text-white font-serif font-bold text-[13px] tracking-wide shrink-0">CB</div>
+            <img src="/CampusBITE_Logo.png" alt="CampusBITE Logo" className="w-9 h-9 rounded-xl object-contain shrink-0" />
             <div className="min-w-0">
               <div className="font-serif font-bold leading-none text-stone-900 text-[18px] tracking-tight">CampusBITE</div>
               <div className="text-[11px] text-stone-500 -mt-0.5 hidden sm:block tracking-wide">Canteen OS · Offline-first</div>
