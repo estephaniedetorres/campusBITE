@@ -134,25 +134,35 @@ export default function KioskPage() {
         </>
       )}
 
-      <div className="flex flex-wrap items-center gap-2">
-        {stalls.map(s => {
-          const active = s.id === stallId;
-          const locked = cart.size>0 && !active;
-          return (
-            <button key={s.id} onClick={() => handleStallChange(s.id)} disabled={locked}
-              title={s.name}
-              className={`px-3 py-2 rounded-full text-sm font-medium border transition flex items-center gap-2 ${active ? 'bg-stone-900 text-white border-stone-900' : locked ? 'bg-stone-50 text-stone-400 border-stone-200 cursor-not-allowed' : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-50'}`}>
-              {s.logo_url ? <img src={s.logo_url} alt={s.name} className="w-5 h-5 rounded-full object-cover" /> : null}
-              {s.name}
-            </button>
-          );
-        })}
-        {lastOrder && (
-          <div className="ml-auto hidden sm:flex items-center gap-2 text-xs font-medium px-3 py-2 rounded-full bg-white border border-stone-200">
+      {/* Stall switcher — hidden when QR locks to one stall */}
+      {!qrStall && (
+        <div className="flex flex-wrap items-center gap-2">
+          {stalls.map(s => {
+            const active = s.id === stallId;
+            const locked = cart.size>0 && !active;
+            return (
+              <button key={s.id} onClick={() => handleStallChange(s.id)} disabled={locked}
+                title={s.name}
+                className={`px-3 py-2 rounded-full text-sm font-medium border transition flex items-center gap-2 ${active ? 'bg-stone-900 text-white border-stone-900' : locked ? 'bg-stone-50 text-stone-400 border-stone-200 cursor-not-allowed' : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-50'}`}>
+                {s.logo_url ? <img src={s.logo_url} alt={s.name} className="w-5 h-5 rounded-full object-cover" /> : null}
+                {s.name}
+              </button>
+            );
+          })}
+          {lastOrder && (
+            <div className="ml-auto hidden sm:flex items-center gap-2 text-xs font-medium px-3 py-2 rounded-full bg-white border border-stone-200">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"/> Order <b>{lastOrder.order.pickup_code}</b> · {liveStatus || lastOrder.order.status}
+            </div>
+          )}
+        </div>
+      )}
+      {qrStall && lastOrder && (
+        <div className="flex justify-end">
+          <div className="flex items-center gap-2 text-xs font-medium px-3 py-2 rounded-full bg-white border border-stone-200">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"/> Order <b>{lastOrder.order.pickup_code}</b> · {liveStatus || lastOrder.order.status}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {currentStall && (
         <div className="fork-card rounded-[24px] overflow-hidden">
