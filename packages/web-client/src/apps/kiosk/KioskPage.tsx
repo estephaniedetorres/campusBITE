@@ -41,6 +41,9 @@ export default function KioskPage() {
   const [liveStatus, setLiveStatus] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [showQr, setShowQr] = useState(false);
+  const [favorites, setFavorites] = useState<Set<string>>(() => {
+    try { const raw = localStorage.getItem('campusbite_favs'); return new Set(raw ? JSON.parse(raw) : []); } catch { return new Set<string>(); }
+  });
 
   useEffect(() => {
     api.get<any[]>('/api/stalls').then(s => {
@@ -63,6 +66,15 @@ export default function KioskPage() {
         setLastOrder((prev: any) => prev ? { ...prev, order: msg.payload } : prev);
       }
     }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('campusbite_favs', JSON.stringify([...favorites]));
+  }, [favorites]);
+  const toggleFav = (id: string) => setFavorites(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
   });
 
   const currentStall = stalls.find(s => s.id === stallId);
@@ -201,7 +213,7 @@ export default function KioskPage() {
             <div key={item.id} className="fork-card rounded-[20px] overflow-hidden group hover:shadow-forkHover transition">
               <div className="relative h-44 overflow-hidden bg-stone-100">
                 <img src={getMenuImage(item)} alt={item.name} className="w-full h-full object-cover group-hover:scale-[1.03] transition duration-500" />
-                <button className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 backdrop-blur flex items-center justify-center text-stone-400 hover:text-red-500 border border-stone-200"><Heart size={14}/></button>
+                <button onClick={() => toggleFav(item.id)} className={`absolute top-3 right-3 w-8 h-8 rounded-full backdrop-blur flex items-center justify-center border transition ${favorites.has(item.id) ? 'bg-red-500 text-white border-red-500' : 'bg-white/90 text-stone-400 hover:text-red-500 border-stone-200'}`}><Heart size={14} fill={favorites.has(item.id) ? 'currentColor' : 'none'} /></button>
                 <span className="absolute bottom-3 left-3 bg-stone-900 text-white text-xs font-semibold px-2.5 py-1 rounded-full">₱{item.price}</span>
               </div>
               <div className="p-4">
