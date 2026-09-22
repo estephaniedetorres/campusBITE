@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { useWebSocket } from '../../hooks/useWebSocket';
-import { ShoppingCart, Plus, Minus, Star, Clock, QrCode, Heart } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Star, Clock, QrCode, Heart, X } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 
 type MenuItem = { id: string; name: string; price: number; description: string; stall_id: string; category_id: string; image_url?: string | null; category_name?: string; rating?: number; rating_count?: number; };
 
@@ -39,6 +40,7 @@ export default function KioskPage() {
   const [lastOrder, setLastOrder] = useState<any>(null);
   const [liveStatus, setLiveStatus] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [showQr, setShowQr] = useState(false);
 
   useEffect(() => {
     api.get<any[]>('/api/stalls').then(s => {
@@ -105,14 +107,32 @@ export default function KioskPage() {
   return (
     <div className="space-y-5 pb-24">
       {qrStall && (
-        <a href={`/kiosk?stall=${qrStall}${qrTable?`&table=${qrTable}`:''}`} className="fork-card rounded-2xl p-3.5 flex items-center gap-3 hover:bg-stone-50 transition">
-          <div className="w-10 h-10 rounded-xl bg-fork-green text-white flex items-center justify-center shrink-0"><QrCode size={18}/></div>
-          <div className="flex-1 min-w-0">
-            <div className="font-serif font-bold text-sm text-stone-900">{stalls.find(s=>s.id===qrStall)?.name || qrStall} {qrTable && `· Table ${qrTable}`}</div>
-            <div className="text-xs text-stone-500 truncate">Tap to view {stalls.find(s=>s.id===qrStall)?.name || qrStall} menu</div>
-          </div>
-          <span className="hidden sm:inline text-xs font-medium px-3 py-1.5 rounded-full bg-fork-greenSoft text-fork-green border border-fork-green/10">QR → kiosk?stall={qrStall}</span>
-        </a>
+        <>
+          <button onClick={()=>setShowQr(true)} className="w-full fork-card rounded-2xl p-3.5 flex items-center gap-3 hover:shadow-forkHover transition text-left">
+            <div className="w-10 h-10 rounded-xl bg-fork-green text-white flex items-center justify-center shrink-0"><QrCode size={18}/></div>
+            <div className="flex-1 min-w-0">
+              <div className="font-serif font-bold text-sm text-stone-900">{stalls.find(s=>s.id===qrStall)?.name || qrStall} {qrTable && `· Table ${qrTable}`}</div>
+              <div className="text-xs text-stone-500">Tap to show QR</div>
+            </div>
+            <span className="hidden sm:inline text-xs font-medium px-3 py-1.5 rounded-full bg-fork-greenSoft text-fork-green border border-fork-green/10">QR → kiosk?stall={qrStall}</span>
+            <span className="sm:hidden text-xs font-semibold text-fork-green">View QR</span>
+          </button>
+          {showQr && (
+            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={()=>setShowQr(false)}>
+              <div className="bg-white rounded-[24px] p-6 w-full max-w-sm text-center" onClick={e=>e.stopPropagation()}>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-serif font-bold text-stone-900">{stalls.find(s=>s.id===qrStall)?.name || qrStall} QR</h3>
+                  <button onClick={()=>setShowQr(false)} className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center"><X size={16}/></button>
+                </div>
+                <div className="bg-white p-4 rounded-2xl border border-stone-200 inline-block">
+                  <QRCodeSVG value={`${window.location.origin}/kiosk?stall=${qrStall}${qrTable ? `&table=${qrTable}` : ''}`} size={180} />
+                </div>
+                <div className="mt-4 text-xs font-mono bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 break-all">{`${window.location.origin}/kiosk?stall=${qrStall}${qrTable ? `&table=${qrTable}` : ''}`}</div>
+                <div className="text-xs text-stone-500 mt-2">Scan to open this stall on another device</div>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       <div className="flex flex-wrap items-center gap-2">
