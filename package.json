@@ -27,5 +27,10 @@
     "expo-status-bar": true,
     "qrcode": true,
     "query-string": true
+  },
+  "dependencies": {
+    "expo-clipboard": "^57.0.2",
+    "pretty-format": "^29.7.0",
+    "query-string": "^7.1.3"
   }
 }
