@@ -26,6 +26,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }, []);
   useEffect(() => { setMenuOpen(false); }, [loc.pathname]);
 
+  // Landing page is a full-bleed, app-style hero with its own nav.
+  if (loc.pathname === '/') return <>{children}</>;
+
   return (
     <div className="min-h-screen flex flex-col bg-stone-50">
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-stone-200 header-safe">
