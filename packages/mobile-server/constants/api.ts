@@ -93,7 +93,14 @@ export async function apiRequest(method: string, path: string, body?: unknown, t
   let data: any = text;
   try { data = text ? JSON.parse(text) : null; } catch {}
   if (!res.ok) {
-    if (res.status === 401 && token && path !== '/api/auth/login') await clearStoredAuth();
+    // Only forget the session if the rejected token is still the one saved on this device.
+    // Screens kept alive in the background may poll with an older token after a re-login;
+    // their 401s must not wipe the new session.
+    if (res.status === 401 && token && path !== '/api/auth/login') {
+      let stored: string | null = null;
+      try { stored = await AsyncStorage.getItem(AUTH_TOKEN_KEY); } catch {}
+      if (stored === token) await clearStoredAuth();
+    }
     const msg = (data && typeof data === 'object' && data.error) || `Request failed (${res.status})`;
     throw new ApiError(msg, res.status, data?.code, data?.retryAfter);
   }

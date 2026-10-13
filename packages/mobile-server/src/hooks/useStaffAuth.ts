@@ -44,7 +44,7 @@ export function useStaffAuth() {
         setTokenState(rawToken);
       } catch (e: any) {
         if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
-          await clearStoredAuth();
+          // apiRequest already removed this token from storage if it was still the saved one
           setUser(null); setTokenState(null);
         } else if (rawUser) {
           // Server unreachable: keep the last known user; requests will retry

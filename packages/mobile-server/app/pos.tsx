@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
 import {
   View,
   Text,
@@ -132,12 +133,12 @@ export default function PosPage() {
     if (!loading && token) refresh();
   }, [loading, token, refresh]);
 
-  // Live updates: poll every 3s (the Expo server has no WebSocket)
-  useEffect(() => {
+  // Live updates: poll every 3s while this screen is visible (the Expo server has no WebSocket)
+  useFocusEffect(useCallback(() => {
     if (!token) return;
     const t = setInterval(refresh, 3000);
     return () => clearInterval(t);
-  }, [token, refresh]);
+  }, [token, refresh]));
 
   async function lookup() {
     setError('');

@@ -6,3 +6,5 @@ packages/mobile-server/.expo
 /tsconfig.json
 # Leftover database from the removed server-core app — delete the folder once nothing holds it open
 packages/server-core/
+# Local browser checks (headless Edge) — not part of the app
+.e2e/

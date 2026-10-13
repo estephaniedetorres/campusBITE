@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
 import {
   View,
   Text,
@@ -160,13 +161,13 @@ export default function KdsPage() {
     }
   }, [token, playChime]);
 
-  // Live updates: poll every 3s (the Expo server has no WebSocket)
-  useEffect(() => {
+  // Live updates: poll every 3s while this screen is visible (the Expo server has no WebSocket)
+  useFocusEffect(useCallback(() => {
     if (!token) return;
     load();
     const t = setInterval(load, 3000);
     return () => clearInterval(t);
-  }, [load, token]);
+  }, [load, token]));
 
 
 
