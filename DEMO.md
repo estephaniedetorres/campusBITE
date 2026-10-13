@@ -26,7 +26,9 @@ You need: 1 phone (hotspot), 1 PC (server), 1+ Android staff phones with Expo Go
    ```bash
    npm run demo
    ```
+   (Same as `npx expo start --lan --offline`; add `--web` to also open it in the PC browser. Don't drop `--offline`: without internet the CLI can hang checking expo.dev. Don't use `--clear` on demo day.)
    Note the LAN address it prints, e.g. `exp://192.168.43.23:8081` → the PC's IP is `192.168.43.23`. Keep this window open.
+   **Warm up:** open the landing page, kiosk, POS, Kitchen and Admin once yourself. The first load of each page is built on the spot and can take 30–60s.
 3. **Staff phones:** join the hotspot → open Expo Go → scan the QR code in the PC terminal → Log in.
 4. **Stall QR codes:** Admin → Menu → QR Codes shows one QR per stall (`http://<PC-IP>:8081/kiosk?stall=stall-001`). Show or print them. The PC's IP can change between sessions, so regenerate the QRs on the day.
 5. **Students:** join the hotspot → camera → scan the stall QR → order in the browser.
