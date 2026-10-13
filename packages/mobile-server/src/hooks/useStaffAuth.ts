@@ -1,6 +1,7 @@
 // Staff session for POS / Kitchen / Admin / Login. Reads the stored token, then confirms it with
 // GET /api/auth/me so revoked, expired or legacy tokens are dropped instead of trusted.
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   AUTH_TOKEN_KEY, AUTH_USER_KEY, ApiError, apiGet, apiPost, clearStoredAuth, setToken,
@@ -55,7 +56,9 @@ export function useStaffAuth() {
     }
   }, []);
 
-  useEffect(() => { reload(); }, [reload]);
+  // Re-check every time the screen comes into focus, not just on first mount: the stack keeps
+  // POS/Kitchen/Admin alive while you go log in, so a mount-only check would stay "logged out".
+  useFocusEffect(useCallback(() => { reload(); }, [reload]));
 
   const logout = useCallback(async () => {
     await logoutSession();

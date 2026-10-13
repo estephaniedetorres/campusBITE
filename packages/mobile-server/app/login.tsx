@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Image } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Eye, EyeOff, ArrowRight, Banknote, ChefHat, Boxes, User, KeyRound, ShieldCheck } from 'lucide-react-native';
 import { ApiError, apiPost } from '../constants/api';
 import { C, R, shadow } from '../constants/theme';
@@ -40,8 +40,14 @@ function PasswordField({ label, value, onChange, onSubmit, placeholder = '••
   );
 }
 
+// Only these screens may be returned to after login (never an arbitrary URL)
+const RETURN_TO = ['/pos', '/kds', '/admin'];
+
 export default function LoginPage() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ next?: string }>();
+  const returnTo = typeof params.next === 'string' && RETURN_TO.includes(params.next) ? params.next : null;
+  const goNext = () => { if (returnTo) router.replace(returnTo as any); };
   const { user, loading: authLoading, logout, setUser, setTokenState } = useStaffAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -64,9 +70,10 @@ export default function LoginPage() {
       await saveSession(data.user, data.token);
       setTokenState(data.token);
       setUser(data.user);
-      if (data.mustChangePassword) { setCurrent(password); setChanging(true); }
       setUsername('');
       setPassword('');
+      if (data.mustChangePassword) { setCurrent(password); setChanging(true); }
+      else goNext();
     } catch (e: any) {
       if (e instanceof ApiError && e.status === 429) setErr(`Too many attempts. Wait ${e.retryAfter ?? 'a few'} seconds and try again.`);
       else if (e instanceof ApiError && e.status === 401) setErr(`Wrong username or password.${e.retryAfter ? ` Try again in ${e.retryAfter}s.` : ''}`);
@@ -87,6 +94,7 @@ export default function LoginPage() {
       setChanging(false);
       setCurrent(''); setNext(''); setConfirm('');
       setNotice('Password changed. Other devices were logged out.');
+      goNext();
     } catch (e: any) {
       setErr(e?.message ?? String(e));
     } finally {

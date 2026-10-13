@@ -167,13 +167,16 @@ export function StaffNav() {
 // ---------------------------------------------------------------------------
 export function StaffGate({ title, image }: { title: string; image: string }) {
   const router = useRouter();
+  const pathname = usePathname();
+  // Come back here after logging in
+  const loginHref = `/login?next=${encodeURIComponent(pathname || '/login')}`;
   return (
     <StaffScreen nav={false} hero={<StaffHero image={image} eyebrow="Staff only" title={title} subtitle="Log in with your stall account to continue." />}>
       <View style={styles.gateCard}>
         <View style={styles.gateIcon}><Shield size={24} color={C.green} /></View>
         <Text style={styles.gateTitle}>Login required</Text>
         <Text style={styles.gateSub}>POS, Kitchen and Admin are for stall owners and the canteen manager.</Text>
-        <TouchableOpacity onPress={() => router.push('/login' as any)} style={styles.primaryBtn}>
+        <TouchableOpacity onPress={() => router.push(loginHref as any)} style={styles.primaryBtn}>
           <LogIn size={16} color="#fff" />
           <Text style={styles.primaryBtnText}>Log in</Text>
         </TouchableOpacity>
