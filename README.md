@@ -1,113 +1,54 @@
-# CampusBITE — Offline-first Canteen OS
+# CampusBITE — Offline-first Canteen Ordering
 
-> Your Android phone **is** the server. Wi-Fi Hotspot → Node.js + SQLite + WebSockets → any browser connects to `http://<hotspot-ip>:3000`. No internet required.
+A phone's Wi-Fi hotspot is the network; a PC on that hotspot runs one Expo server (`:8081`) that serves the app **and** its API (SQLite). No internet needed.
 
-## Monorepo Structure
+- **Students** scan a stall's QR with the phone camera and order in the browser: `http://<PC-IP>:8081/kiosk?stall=stall-001`. Orders are tracked per device (no accounts).
+- **Staff** (POS, Kitchen, Admin) use the same app in **Expo Go** on Android phones.
+
+See [DEMO.md](DEMO.md) for the demo-day runbook.
+
+## Layout
 
 ```
-CampusBITE/
-├── packages/server-core   # Express + SQLite (WAL) + WebSocket gateway + BOM atomic engine
-├── packages/web-client    # React + Vite + Tailwind SPA (Kiosk / POS / KDS / Admin) - bundled & served by phone
-└── packages/mobile-server # React Native wrapper (Foreground Service + WakeLock + Node Mobile bridge) [placeholder scaffold]
+packages/mobile-server
+├── app/                 # Expo Router screens: index (landing), kiosk, orders, login, pos, kds, admin
+│   └── api/             # Expo API routes → lib/server/router.ts
+├── lib/
+│   ├── server/          # router (per-route permissions), password (scrypt), sessions, login throttle
+│   ├── database.ts      # SQLite (node:sqlite / better-sqlite3), migrations, auto-seed
+│   ├── seed.ts          # demo stalls, menu, BOM, staff
+│   └── bomEngine.ts     # atomic stock deduction / rollback
+├── assets/stock/        # bundled offline photos, served at /api/images/*
+├── data/                # campusbite.db + uploads/ (git-ignored)
+├── scripts/             # seed.ts, reset-admin.ts
+└── tests/               # Vitest API tests
 ```
 
-## How It Works (Learn This)
+## Commands (from the repo root)
 
-### 1. Phone as Server (Hotspot)
-- Turn on **Portable Wi-Fi Hotspot** on the Android host phone (Settings → Hotspot).
-- That phone runs `node packages/server-core/dist/server.js` — Express listens on `0.0.0.0:3000`, so any device on the same hotspot LAN can reach it via the hotspot gateway IP (typically `192.168.43.1`).
-- Clients need **nothing installed** — just a browser and `http://192.168.43.1:3000`.
+| Command | What it does |
+|---|---|
+| `npm install` | Install dependencies (once, with internet) |
+| `npm run demo` | Start the Expo server for the hotspot (`expo start --lan --offline`) |
+| `npm run seed` | Create or refresh demo data (keeps changed passwords) |
+| `npm run reset-admin` | Print a one-time password for `admin` (or `npm run reset-admin -- <username>`) |
+| `npm test` | Run the API test suite |
 
-### 2. Foreground Service + WakeLock (Why not just a normal app?)
-- Android Doze kills background tasks when screen off. 
-- **Foreground Service** shows ongoing notification (`CampusBITE Active`) — Android treats it as user-visible, won't kill.
-- **Partial WakeLock** keeps CPU awake so SQLite/WS still process orders with screen locked.
+Requires Node 22.5+ (built-in `node:sqlite`).
 
-### 3. Atomic BOM Deductions (SQLite TRANSACTION)
-- `recipe_bom` maps each menu item → ingredients (e.g., Classic Burger → 1 bun, 1 patty, 20g sauce).
-- When order goes `PENDING_PAYMENT → CONFIRMED`, we run:
-  ```sql
-  BEGIN TRANSACTION;
-  -- sum all needs per ingredient, check stock, then
-  UPDATE ingredients SET current_stock = current_stock - :need WHERE id=:ing;
-  INSERT INTO stock_logs ... 'BOM_DEDUCTION';
-  COMMIT; -- or ROLLBACK if any ingredient insufficient
-  ```
-- On `CANCELLED` after deduction, the same quantities are **rolled back** (`current_stock + need`).
+## Security model
 
-### 4. Real-time WebSockets (Rooms)
-- Single WS endpoint `/ws`. Client sends `{type:'JOIN', room:'kds'}` or `{type:'JOIN_ORDER', orderId}`.
-- Server broadcasts `ORDER_CREATED` and `ORDER_STATUS_UPDATED` to rooms `kds`, `pos`, `admin`, and `order:<id>`.
-- KDS chimes via Web Audio API when a new ticket arrives.
+- **Passwords:** scrypt hashes (`node:crypto`, per-user salt), minimum 8 characters. Old plain-text PINs are hashed automatically on first start.
+- **Sessions:** random 32-byte bearer tokens (`Authorization: Bearer …`), stored server-side as SHA-256 hashes, 12-hour expiry, revoked on logout, password change and admin reset.
+- **Login throttling:** growing delay per username after failed attempts (1s, 2s, 4s … 30s). No lockout.
+- **Permissions:** every API route is declared `public`, `staff` (stall owners limited to their own stall) or `admin` in `lib/server/router.ts`; `tests/permissions.test.ts` checks every route.
+- **Forgot password:** an admin resets a stall owner in Admin → Users (one-time password, must be changed at next login). A locked-out admin runs `npm run reset-admin` on the server PC.
+- **Customer tracking:** by unguessable order UUID only, never by pickup code.
+- **Uploads:** JPEG/PNG/WebP up to 2 MB, verified by file contents, saved under `data/uploads/`.
 
-### 5. SPA Bundling
-- `web-client` builds to `dist/` (static HTML/JS/CSS). `server-core` serves it via `express.static`.
-- So the phone serves **both API and UI** from one process.
+## Before production
 
-## Quick Start
-
-```bash
-npm install
-npm run seed --workspace=server-core
-npm run dev --workspace=server-core  # http://localhost:3000
-# in another terminal:
-npm run dev --workspace=web-client   # http://localhost:5173
-```
-
-## Running on Android Phone as Server (REQUIRED — phone is the server via Hotspot, Termux)
-
-> **Requirement: Phone as Server** — the Android phone runs Node + SQLite and serves all clients via its Wi-Fi Hotspot at `http://192.168.43.1:3000`. No internet, no PC server.
-
-**One-tap script (handles stuck `pkg upgrade`, Node version, better-sqlite3 fallback):**
-```bash
-# In Termux (install Termux ONLY from F-Droid, not Play Store):
-git clone https://github.com/estephaniedetorres/campusBITE.git
-cd campusBITE
-bash scripts/phone-server.sh
-# Script does: pkg update → install nodejs → check Node >=22.5 → npm install → build → seed → node dist/server.js
-# KEEP TERMUX OPEN + Hotspot ON — server dies if Termux is swiped away
-```
-
-**Manual steps if script hangs:**
-1. **Stuck at 3% on `pkg upgrade`?** Press `Ctrl+C`, then skip upgrade:
-   ```bash
-   pkg update -y
-   pkg install nodejs -y   # NOT pkg upgrade -y
-   # if still stuck: termux-change-repo → pick another mirror → pkg update -y
-   ```
-2. **Check Node:**
-   ```bash
-   node -v  # need v22.5+ for built-in node:sqlite
-   # If v20.x → fallback compile:
-   pkg install python clang make -y
-   npm install better-sqlite3
-   ```
-3. **Run:**
-   ```bash
-   npm install
-   node packages/server-core/dist/server.js
-   # must show: Network: http://192.168.43.1:3000
-   ```
-4. **Turn on phone Hotspot** (Settings → Portable Hotspot) **before** starting server or right after — keep it ON.
-5. **Clients:** Other phones/laptops → WiFi → join **phone's hotspot** → browser → `http://192.168.43.1:3000` → Kiosk is **only public** page (`/kiosk?stall=stall-001` via QR). Staff pages `/pos`, `/kds`, `/admin` require login (`admin/admin123`, `potato/potato123`, `matees/matees123`) — server enforces `403` if stall owner tries other stall.
-
-## Running as APK (later, needs Android Studio + JDK 17)
-
-See `packages/mobile-server/README.md` for Foreground Service setup and `./gradlew assembleRelease`.
-
-## Testing the Flow
-
-1. `/kiosk` — select Potato Corner, add Cheese Fries ×2, Checkout → note code e.g., `A3X9`
-2. `/pos` — enter `A3X9`, confirm cash (triggers BOM deduction, check `/admin` stock decreased)
-3. `/kds` — watch Kanban: New → Preparing → Ready
-4. `/admin` → Ingredients: try Stock-In, Wastage, and EOD Audit (variance = physical − system)
-
-## API Endpoints
-
-- `GET /api/health` — IPs, uptime, WS URL
-- `GET /api/stalls`, `GET /api/menu?stallId=...`, `GET /api/categories?stallId=...`
-- `POST /api/orders` `{stallId, items:[{menuItemId, quantity}]}` → 201 with `pickup_code`
-- `GET /api/orders/by-code/:code`, `PATCH /api/orders/:id/status` `{status}`
-- `GET /api/inventory`, `POST /api/inventory/:id/stock-in` `{quantity}`, `GET /api/recipe-bom`
-- `POST /api/audits/bulk` `{auditDate, entries:[{ingredientId, physicalActualStock}]}`
-- `WS /ws` — send `{"type":"JOIN","room":"kds"}` then listen for `ORDER_CREATED` / `ORDER_STATUS_UPDATED`
+- [ ] Remove the demo logins (`admin`, `potato`, `matees`) from `lib/seed.ts` and this repo's docs, and set real passwords.
+- [ ] Serve over HTTPS using a local certificate authority installed on staff devices. Until then, run only on a WPA2-protected hotspot with a strong password: traffic is plain HTTP.
+- [ ] Upgrade from Expo SDK 52 to the current SDK so staff can use the store version of Expo Go on any phone (including iPhones).
+- [ ] Decide on backups for `data/campusbite.db` and `data/uploads/`.

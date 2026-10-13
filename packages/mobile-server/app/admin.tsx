@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useWorkspaceAuth } from '../src/hooks/useStaffAuth';
 import {
   Boxes,
   TriangleAlert as AlertTriangle,
@@ -35,9 +36,10 @@ import {
   Copy,
   Printer,
 } from 'lucide-react-native';
-import { getApiBase, setToken } from '../constants/api';
+import { apiGet, apiPost, apiPatch, apiDelete, resolveImageUrl, publicOrigin } from '../constants/api';
 import { C, R, shadow } from '../constants/theme';
 import { StaffScreen, StaffHero, StaffGate, STAFF_HERO_IMAGES } from '../src/components/StaffChrome';
+import * as ImagePicker from 'expo-image-picker';
 import { SvgXml } from 'react-native-svg';
 import QRCode from 'qrcode';
 
@@ -58,148 +60,38 @@ type AuthUser = {
 // ---------------------------------------------------------------------------
 // Auth hook — AsyncStorage hybrid auth (campusbite_user / campusbite_token)
 // ---------------------------------------------------------------------------
-function useAuth() {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [token, setTokenState] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+const useAuth = useWorkspaceAuth;
 
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const rawUser = await AsyncStorage.getItem('campusbite_user');
-        const rawToken = await AsyncStorage.getItem('campusbite_token');
-        if (!mounted) return;
-        if (rawUser) {
-          try {
-            const parsed: AuthUser = JSON.parse(rawUser);
-            setUser(parsed);
-            if (!rawToken && parsed?.id) {
-              setTokenState(parsed.id);
-              setToken(parsed.id);
-            }
-          } catch {}
-        }
-        if (rawToken) {
-          setTokenState(rawToken);
-          setToken(rawToken);
-        }
-      } catch {
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+// ---------------------------------------------------------------------------
+// API helpers — shared client sends Authorization: Bearer <session token>
+// ---------------------------------------------------------------------------
+const authedGet = (path: string, token: string | null) => apiGet(path, token);
+const authedPost = (path: string, body: any, token: string | null) => apiPost(path, body, token);
+const authedPatch = (path: string, body: any, token: string | null) => apiPatch(path, body, token);
+const authedDel = (path: string, token: string | null) => apiDelete(path, token);
 
-  return { user, token, loading };
+const isRemoteUrl = (u?: string | null) => !!u && /^https?:\/\//i.test(u);
+
+/** Pick a photo from the device and store it on the CampusBITE server (works offline). */
+async function pickAndUploadImage(token: string | null): Promise<string | null> {
+  try {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Photos access needed', 'Allow photo access to upload menu pictures.');
+      return null;
+    }
+    const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [4, 3], quality: 0.7, base64: true });
+    if (picked.canceled || !picked.assets?.length) return null;
+    const asset = picked.assets[0];
+    const dataBase64 = asset.base64 || (asset.uri.startsWith('data:') ? asset.uri : null);
+    if (!dataBase64) throw new Error('Could not read the selected image');
+    const res = await authedPost('/api/uploads', { dataBase64 }, token);
+    return res.url as string;
+  } catch (e: any) {
+    Alert.alert('Upload failed', e?.message ?? String(e));
+    return null;
+  }
 }
-
-// ---------------------------------------------------------------------------
-// Authed fetch helpers — mirrors packages/web-client/src/lib/api.ts
-// Uses getApiBase() + x-user-id header (hybrid auth)
-// ---------------------------------------------------------------------------
-  async function fallbackFetch(path: string, init?: RequestInit): Promise<Response> {
-    const base = getApiBase();
-    let url = `${base}${path}`;
-    if (!base && typeof window === 'undefined') url = `http://localhost:3000${path}`;
-    try {
-      const res = await fetch(url, init as any);
-      const ct = res.headers.get('content-type') || '';
-      const t = await res.clone().text().catch(()=> '');
-      if (!ct.includes('application/json') && (t.trim().startsWith('<!') || t.trim().startsWith('<html'))) {
-        const fb = `http://localhost:3000${path}`;
-        const r2 = await fetch(fb, init as any);
-        if (r2.headers.get('content-type')?.includes('application/json') || r2.ok) return r2;
-      }
-      return res;
-    } catch {
-      const fb = `http://localhost:3000${path}`;
-      return fetch(fb, init as any);
-    }
-  }
-  async function authedGet(path: string, token: string | null): Promise<any> {
-    const headers: Record<string, string> = {};
-    if (token) headers['x-user-id'] = token;
-    const res = await fallbackFetch(path, { headers });
-    if (!res.ok) {
-      const text = await res.text();
-      let body: any;
-      try {
-        body = JSON.parse(text);
-      } catch {
-        body = text;
-      }
-      throw new Error(typeof body === 'string' ? body : body.error || JSON.stringify(body));
-    }
-    const ct = res.headers.get('content-type') || '';
-    if (ct.includes('application/json')) return res.json();
-    return res.text();
-  }
-  async function authedPost(path: string, body: any, token: string | null): Promise<any> {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (token) headers['x-user-id'] = token;
-    const res = await fallbackFetch(path, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-    } as any);
-    if (!res.ok) {
-      const text = await res.text();
-      let payload: any;
-      try {
-        payload = JSON.parse(text);
-      } catch {
-        payload = text;
-      }
-      throw new Error(typeof payload === 'string' ? payload : payload.error || JSON.stringify(payload));
-    }
-    const ct = res.headers.get('content-type') || '';
-    if (ct.includes('application/json')) return res.json();
-    return res.text();
-  }
-  async function authedPatch(path: string, body: any, token: string | null): Promise<any> {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (token) headers['x-user-id'] = token;
-    const res = await fallbackFetch(path, {
-      method: 'PATCH',
-      headers,
-      body: JSON.stringify(body),
-    } as any);
-    if (!res.ok) {
-      const text = await res.text();
-      let payload: any;
-      try {
-        payload = JSON.parse(text);
-      } catch {
-        payload = text;
-      }
-      throw new Error(typeof payload === 'string' ? payload : payload.error || JSON.stringify(payload));
-    }
-    const ct = res.headers.get('content-type') || '';
-    if (ct.includes('application/json')) return res.json();
-    return res.text();
-  }
-  async function authedDel(path: string, token: string | null): Promise<any> {
-    const headers: Record<string, string> = {};
-    if (token) headers['x-user-id'] = token;
-    const res = await fallbackFetch(path, { method: 'DELETE', headers } as any);
-    if (!res.ok) {
-      const text = await res.text();
-      let payload: any;
-      try {
-        payload = JSON.parse(text);
-      } catch {
-        payload = text;
-      }
-      throw new Error(typeof payload === 'string' ? payload : payload.error || JSON.stringify(payload));
-    }
-    const ct = res.headers.get('content-type') || '';
-    if (ct.includes('application/json')) return res.json();
-    return res.text();
-  }
 
 // ---------------------------------------------------------------------------
 // QrSvg — react-native-svg + qrcode (same as kiosk.tsx)
@@ -528,7 +420,7 @@ function MenuManagementTab({ token, user }: { token: string | null; user: AuthUs
               activeOpacity={0.85}
               style={[styles.stallChip, selectedStall === s.id ? styles.stallChipActive : styles.stallChipIdle]}
             >
-              {s.logo_url ? <Image source={{ uri: s.logo_url }} style={styles.stallChipLogo} /> : null}
+              {s.logo_url ? <Image source={{ uri: resolveImageUrl(s.logo_url) }} style={styles.stallChipLogo} /> : null}
               <Text style={[styles.stallChipText, selectedStall === s.id ? styles.stallChipTextActive : null]} numberOfLines={1}>
                 {s.name}
               </Text>
@@ -577,8 +469,7 @@ function MenuManagementTab({ token, user }: { token: string | null; user: AuthUs
         </View>
         <View style={styles.qrGrid}>
           {visibleStalls.map((s: any) => {
-            const base = getApiBase();
-            const url = `${base}/kiosk?stall=${s.id}`;
+            const url = `${publicOrigin(health)}/kiosk?stall=${s.id}`;
             return (
               <View key={s.id} style={styles.qrCard}>
                 <View style={styles.qrImageWrap}>
@@ -586,7 +477,7 @@ function MenuManagementTab({ token, user }: { token: string | null; user: AuthUs
                 </View>
                 <View style={styles.qrMeta}>
                   <View style={styles.qrMetaRow}>
-                    {s.logo_url ? <Image source={{ uri: s.logo_url }} style={styles.qrLogo} /> : null}
+                    {s.logo_url ? <Image source={{ uri: resolveImageUrl(s.logo_url) }} style={styles.qrLogo} /> : null}
                     <Text style={styles.qrName}>{s.name}</Text>
                   </View>
                   <Text style={styles.qrUrl} numberOfLines={2} selectable>
@@ -723,14 +614,17 @@ function MenuManagementTab({ token, user }: { token: string | null; user: AuthUs
                   style={styles.inputIconInput}
                 />
               </View>
-              <View style={styles.uploadHint}>
-                <Upload size={14} color="#57534E" />
-                <Text style={styles.uploadHintText}>Paste URL</Text>
-              </View>
+              <TouchableOpacity
+                onPress={async () => { const url = await pickAndUploadImage(token); if (url) setNewItem((p) => ({ ...p, imageUrl: url })); }}
+                style={styles.qrBtnDark} activeOpacity={0.85} accessibilityLabel="Upload a photo">
+                <Upload size={14} color="#fff" />
+                <Text style={styles.qrBtnDarkText}>Upload photo</Text>
+              </TouchableOpacity>
             </View>
+            {isRemoteUrl(newItem.imageUrl) ? <Text style={styles.tdDesc}>Pasted links need internet. Upload a photo to make it work offline.</Text> : null}
             {newItem.imageUrl ? (
               <View style={styles.previewWrap}>
-                <Image source={{ uri: newItem.imageUrl }} style={styles.previewImage} />
+                <Image source={{ uri: resolveImageUrl(newItem.imageUrl) }} style={styles.previewImage} />
                 <TouchableOpacity onPress={() => setNewItem({ ...newItem, imageUrl: '' })} style={styles.previewRemove} activeOpacity={0.85}>
                   <Text style={styles.previewRemoveText}>Remove</Text>
                 </TouchableOpacity>
@@ -774,7 +668,7 @@ function MenuManagementTab({ token, user }: { token: string | null; user: AuthUs
                 <View style={{ width: 70, alignItems: 'center' }}>
                   <View style={styles.thumb}>
                     {it.image_url ? (
-                      <Image source={{ uri: it.image_url }} style={styles.thumbImage} />
+                      <Image source={{ uri: resolveImageUrl(it.image_url) }} style={styles.thumbImage} />
                     ) : (
                       <View style={styles.thumbPlaceholder}>
                         <ImageIcon size={20} color="#A8A29E" />
@@ -868,19 +762,22 @@ function MenuManagementTab({ token, user }: { token: string | null; user: AuthUs
                 />
               </View>
               <View style={styles.rowInputs}>
-                <View style={styles.uploadHint}>
-                  <Upload size={14} color="#57534E" />
-                  <Text style={styles.uploadHintText}>{editingItem?.image_url ? 'Change URL' : 'Paste URL'}</Text>
-                </View>
+                <TouchableOpacity
+                  onPress={async () => { const url = await pickAndUploadImage(token); if (url) setEditingItem((p: any) => ({ ...p, image_url: url })); }}
+                  style={styles.qrBtnDark} activeOpacity={0.85} accessibilityLabel="Upload a photo">
+                  <Upload size={14} color="#fff" />
+                  <Text style={styles.qrBtnDarkText}>{editingItem?.image_url ? 'Replace photo' : 'Upload photo'}</Text>
+                </TouchableOpacity>
                 {editingItem?.image_url ? (
                   <TouchableOpacity onPress={() => setEditingItem((p: any) => ({ ...p, image_url: '' }))} style={styles.btnGhost} activeOpacity={0.85}>
                     <Text style={styles.btnGhostText}>Clear</Text>
                   </TouchableOpacity>
                 ) : null}
               </View>
+              {isRemoteUrl(editingItem?.image_url) ? <Text style={styles.tdDesc}>Pasted links need internet. Upload a photo to make it work offline.</Text> : null}
               {editingItem?.image_url ? (
                 <View style={styles.previewWrapLarge}>
-                  <Image source={{ uri: editingItem.image_url }} style={styles.previewImageLarge} />
+                  <Image source={{ uri: resolveImageUrl(editingItem.image_url) }} style={styles.previewImageLarge} />
                 </View>
               ) : null}
               <View style={styles.availChips}>
@@ -1464,7 +1361,9 @@ function AnalyticsTab({ token }: { token: string | null }) {
 function UsersTab({ token }: { token: string | null }) {
   const [users, setUsers] = useState<any[]>([]);
   const [stalls, setStalls] = useState<any[]>([]);
-  const [form, setForm] = useState({ username: '', pin: '', role: 'STALL_OWNER' as 'ADMIN' | 'STALL_OWNER', stallId: '', displayName: '' });
+  const [form, setForm] = useState({ username: '', password: '', role: 'STALL_OWNER' as 'ADMIN' | 'STALL_OWNER', stallId: '', displayName: '' });
+  // Shown once after an admin reset; the manager reads it out to the stall owner
+  const [resetResult, setResetResult] = useState<{ username: string; temporaryPassword: string } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -1479,8 +1378,8 @@ function UsersTab({ token }: { token: string | null }) {
   }, [load]);
 
   async function create() {
-    if (!form.username.trim() || !form.pin.trim()) {
-      Alert.alert('Missing', 'Username and PIN required');
+    if (!form.username.trim() || form.password.length < 8) {
+      Alert.alert('Missing', 'Username and a password of at least 8 characters are required');
       return;
     }
     if (form.role === 'STALL_OWNER' && !form.stallId) {
@@ -1490,10 +1389,10 @@ function UsersTab({ token }: { token: string | null }) {
     try {
       await authedPost(
         '/api/users',
-        { username: form.username.trim(), pin: form.pin.trim(), role: form.role, stallId: form.role === 'STALL_OWNER' ? form.stallId : null, displayName: form.displayName || form.username.trim() },
+        { username: form.username.trim(), password: form.password, role: form.role, stallId: form.role === 'STALL_OWNER' ? form.stallId : null, displayName: form.displayName || form.username.trim() },
         token
       );
-      setForm({ username: '', pin: '', role: 'STALL_OWNER', stallId: '', displayName: '' });
+      setForm({ username: '', password: '', role: 'STALL_OWNER', stallId: '', displayName: '' });
       load();
     } catch (e: any) {
       Alert.alert('Failed', e?.message ?? String(e));
@@ -1516,6 +1415,15 @@ function UsersTab({ token }: { token: string | null }) {
       },
     ]);
   }
+  async function resetPassword(u: any) {
+    try {
+      const r = await authedPost(`/api/users/${u.id}/reset-password`, {}, token);
+      setResetResult(r);
+      load();
+    } catch (e: any) {
+      Alert.alert('Reset failed', e?.message ?? String(e));
+    }
+  }
   async function toggleActive(u: any) {
     try {
       await authedPatch(`/api/users/${u.id}`, { is_active: u.is_active ? 0 : 1 }, token);
@@ -1536,7 +1444,8 @@ function UsersTab({ token }: { token: string | null }) {
         </View>
         <View style={styles.userFormGrid}>
           <TextInput value={form.username} onChangeText={(t) => setForm({ ...form, username: t })} placeholder="username" placeholderTextColor="#A8A29E" autoCapitalize="none" style={styles.input} />
-          <TextInput value={form.pin} onChangeText={(t) => setForm({ ...form, pin: t })} placeholder="PIN" placeholderTextColor="#A8A29E" style={styles.input} />
+          <TextInput value={form.password} onChangeText={(t) => setForm({ ...form, password: t })} placeholder="Starting password (8+ characters)" placeholderTextColor="#A8A29E" secureTextEntry autoCapitalize="none" style={styles.input} accessibilityLabel="Starting password" />
+          <Text style={styles.tdDesc}>They'll be asked to choose their own password on first login.</Text>
           <TextInput value={form.displayName} onChangeText={(t) => setForm({ ...form, displayName: t })} placeholder="Display name" placeholderTextColor="#A8A29E" style={styles.input} />
           <View style={styles.roleChips}>
             <TouchableOpacity
@@ -1572,14 +1481,30 @@ function UsersTab({ token }: { token: string | null }) {
         </TouchableOpacity>
       </View>
 
+      {resetResult ? (
+        <View style={[styles.forkCard, { backgroundColor: C.greenSoft, borderColor: C.greenSoft, gap: 8 }]}>
+          <Text style={styles.sectionTitle}>Temporary password for @{resetResult.username}</Text>
+          <Text selectable style={{ fontSize: 28, fontWeight: '800', letterSpacing: 2, color: C.green, fontFamily: 'monospace' }}>
+            {resetResult.temporaryPassword}
+          </Text>
+          <Text style={styles.tdDesc}>
+            Give this to them in person. It works once: they must set a new password when they log in. Their other devices were logged out. It won't be shown again.
+          </Text>
+          <TouchableOpacity onPress={() => setResetResult(null)} style={[styles.btnGhost, { alignSelf: 'flex-start' }]} activeOpacity={0.85}>
+            <Text style={styles.btnGhostText}>Done</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
       <View style={[styles.forkCard, { padding: 0, overflow: 'hidden' }]}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={{ minWidth: 640 }}>
+          <View style={{ minWidth: 760 }}>
             <View style={styles.tableHead}>
               <Text style={[styles.th, { flex: 1.2 }]}>User</Text>
               <Text style={[styles.th, { width: 110 }]}>Role</Text>
               <Text style={[styles.th, { width: 120 }]}>Stall</Text>
               <Text style={[styles.th, { width: 110 }]}>Active</Text>
+              <Text style={[styles.th, { width: 130 }]}>Password</Text>
               <Text style={[styles.th, { width: 70 }]}></Text>
             </View>
             {users.map((u: any) => (
@@ -1599,6 +1524,12 @@ function UsersTab({ token }: { token: string | null }) {
                 <View style={{ width: 110 }}>
                   <TouchableOpacity onPress={() => toggleActive(u)} activeOpacity={0.85} style={[styles.badge, u.is_active ? styles.badgeGreen : styles.badgeStone]}>
                     <Text style={[styles.badgeText, u.is_active ? { color: '#047857' } : { color: '#78716C' }]}>{u.is_active ? 'Active' : 'Disabled'}</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={{ width: 130 }}>
+                  {/* Server refuses self-reset; admins change their own password from the Login screen */}
+                  <TouchableOpacity onPress={() => resetPassword(u)} style={styles.qrBtnGhost} activeOpacity={0.85} accessibilityLabel={`Reset password for ${u.username}`}>
+                    <Text style={styles.qrBtnGhostText}>{u.must_change_password ? 'Reset again' : 'Reset password'}</Text>
                   </TouchableOpacity>
                 </View>
                 <View style={{ width: 70 }}>

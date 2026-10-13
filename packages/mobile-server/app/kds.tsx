@@ -10,14 +10,15 @@ import {
   Vibration,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useWorkspaceAuth } from '../src/hooks/useStaffAuth';
 import { Volume2, VolumeX, Clock } from 'lucide-react-native';
 import { useWindowDimensions } from 'react-native';
-import { getApiBase, setToken } from '../constants/api';
+import { apiGet, apiPatch, setToken } from '../constants/api';
 import { C, R, shadow } from '../constants/theme';
 import { StaffScreen, StaffHero, StaffGate, HeroChip, STAFF_HERO_IMAGES } from '../src/components/StaffChrome';
 
 // ---------------------------------------------------------------------------
-// Types — mirrors packages/web-client/src/apps/kds/KdsPage.tsx
+// Types
 // ---------------------------------------------------------------------------
 type Order = { id: string; pickup_code: string; status: string; total_amount: number; created_at: string };
 type OrderDetails = { order: Order; items: { id: string; menu_item_name: string; quantity: number; subtotal: number }[] };
@@ -44,172 +45,15 @@ const columns: { key: string; label: string; accent: { dot: string } }[] = [
 // ---------------------------------------------------------------------------
 // useAuth — AsyncStorage (mirrors web localStorage campusbite_user/token)
 // ---------------------------------------------------------------------------
-function useAuth() {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [token, setTokenState] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+const useAuth = useWorkspaceAuth;
 
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const rawUser = await AsyncStorage.getItem('campusbite_user');
-        const rawToken = await AsyncStorage.getItem('campusbite_token');
-        if (!mounted) return;
-        if (rawUser) {
-          try {
-            const parsed: AuthUser = JSON.parse(rawUser);
-            setUser(parsed);
-            if (!rawToken && parsed?.id) {
-              setTokenState(parsed.id);
-              setToken(parsed.id);
-            }
-          } catch {}
-        }
-        if (rawToken) {
-          setTokenState(rawToken);
-          setToken(rawToken);
-        }
-      } catch {
-        // ignore
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
 
-  return { user, token, loading };
-}
 
 // ---------------------------------------------------------------------------
-// useWebSocket — port of packages/web-client/src/hooks/useWebSocket.ts
-// Adapted for React Native + getApiBase(). KDS uses room='kds'.
+// API helpers — shared client sends Authorization: Bearer <session token>
 // ---------------------------------------------------------------------------
-function useWebSocket(opts: {
-  room?: string;
-  orderId?: string;
-  onMessage?: (msg: { type: string; payload: any }) => void;
-}) {
-  const wsRef = useRef<WebSocket | null>(null);
-  const onMessageRef = useRef(opts.onMessage);
-  onMessageRef.current = opts.onMessage;
-
-  const connect = useCallback(() => {
-    const base = getApiBase();
-    const wsBase = base.replace(/^http/, 'ws');
-    const url = `${wsBase}/ws`;
-    let ws: WebSocket;
-    try {
-      ws = new WebSocket(url);
-    } catch {
-      return;
-    }
-    wsRef.current = ws;
-    ws.onopen = () => {
-      if (opts.room) {
-        try {
-          ws.send(JSON.stringify({ type: 'JOIN', room: opts.room }));
-        } catch {}
-      }
-      if (opts.orderId) {
-        try {
-          ws.send(JSON.stringify({ type: 'JOIN_ORDER', orderId: opts.orderId }));
-        } catch {}
-      }
-    };
-    ws.onmessage = (ev: MessageEvent) => {
-      try {
-        const msg = JSON.parse(ev.data as string);
-        onMessageRef.current?.(msg);
-      } catch {}
-    };
-    ws.onclose = () => {
-      setTimeout(connect, 2000);
-    };
-    ws.onerror = () => {
-      try {
-        ws.close();
-      } catch {}
-    };
-  }, [opts.room, opts.orderId]);
-
-  useEffect(() => {
-    if (!opts.room && !opts.orderId) return;
-    connect();
-    return () => {
-      try {
-        wsRef.current?.close();
-      } catch {}
-    };
-  }, [connect, opts.room, opts.orderId]);
-}
-
-// ---------------------------------------------------------------------------
-// Auth-aware fetch helpers — mirrors packages/web-client/src/lib/api.ts
-// ---------------------------------------------------------------------------
-async function fallbackFetch(path: string, init?: RequestInit): Promise<Response> {
-  const base = getApiBase();
-  let url = `${base}${path}`;
-  if (!base && typeof window === 'undefined') url = `http://localhost:3000${path}`;
-  try {
-    const res = await fetch(url, init as any);
-    const ct = res.headers.get('content-type') || '';
-    const t = await res.clone().text().catch(()=> '');
-    if (!ct.includes('application/json') && (t.trim().startsWith('<!') || t.trim().startsWith('<html'))) {
-      const fb = `http://localhost:3000${path}`;
-      const r2 = await fetch(fb, init as any);
-      if (r2.headers.get('content-type')?.includes('application/json') || r2.ok) return r2;
-    }
-    return res;
-  } catch {
-    const fb = `http://localhost:3000${path}`;
-    return fetch(fb, init as any);
-  }
-}
-async function authedGet(path: string, token: string | null): Promise<any> {
-  const headers: Record<string, string> = {};
-  if (token) headers['x-user-id'] = token;
-  const res = await fallbackFetch(path, { headers });
-  if (!res.ok) {
-    const text = await res.text();
-    let body: any;
-    try {
-      body = JSON.parse(text);
-    } catch {
-      body = text;
-    }
-    throw new Error(typeof body === 'string' ? body : body.error || JSON.stringify(body));
-  }
-  const ct = res.headers.get('content-type') || '';
-  if (ct.includes('application/json')) return res.json();
-  return res.text();
-}
-
-async function authedPatch(path: string, body: any, token: string | null): Promise<any> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (token) headers['x-user-id'] = token;
-  const res = await fallbackFetch(path, {
-    method: 'PATCH',
-    headers,
-    body: JSON.stringify(body),
-  } as any);
-  if (!res.ok) {
-    const text = await res.text();
-    let payload: any;
-    try {
-      payload = JSON.parse(text);
-    } catch {
-      payload = text;
-    }
-    throw new Error(typeof payload === 'string' ? payload : payload.error || JSON.stringify(payload));
-  }
-  const ct = res.headers.get('content-type') || '';
-  if (ct.includes('application/json')) return res.json();
-  return res.text();
-}
+const authedGet = (path: string, token: string | null) => apiGet(path, token);
+const authedPatch = (path: string, body: any, token: string | null) => apiPatch(path, body, token);
 
 // ---------------------------------------------------------------------------
 // Chime — uses expo-av Audio.Sound or expo-haptics, fallback to Vibration.
@@ -237,7 +81,7 @@ try {
 } catch {}
 
 // ---------------------------------------------------------------------------
-// Main KDS screen — port of packages/web-client/src/apps/kds/KdsPage.tsx
+// Main KDS screen
 // Keeps all logic: auth gate, 3 columns, GET /api/orders?limit=100 filtered,
 // GET /api/orders/:id details, grouped, ageMin>12 urgent red, advance PATCH,
 // useWebSocket room='kds' with chime + mute toggle. Uses RN
@@ -251,6 +95,7 @@ export default function KdsPage() {
   const [muted, setMuted] = useState(false);
   const mutedRef = useRef(muted);
   mutedRef.current = muted;
+  const seenNewRef = useRef<Set<string> | null>(null);
   const detailsRef = useRef(details);
   useEffect(() => {
     detailsRef.current = details;
@@ -298,6 +143,10 @@ export default function KdsPage() {
       const all = await authedGet('/api/orders?limit=100', token);
       const arr: Order[] = Array.isArray(all) ? all : [];
       const filtered = arr.filter((o) => ['CONFIRMED', 'PREPARING', 'READY'].includes(o.status));
+      // Chime when a ticket we haven't seen lands in "New" (skip the very first load)
+      const newIds = filtered.filter((o) => o.status === 'CONFIRMED').map((o) => o.id);
+      if (seenNewRef.current && newIds.some((id) => !seenNewRef.current!.has(id))) playChime();
+      seenNewRef.current = new Set([...(seenNewRef.current ?? []), ...newIds]);
       setOrders(filtered);
       for (const o of filtered) {
         if (!detailsRef.current[o.id]) {
@@ -309,26 +158,17 @@ export default function KdsPage() {
     } catch {
       // ignore polling errors (hotspot blip)
     }
-  }, [token]);
+  }, [token, playChime]);
 
-  // Polling every 4000ms + initial load (mirrors web)
+  // Live updates: poll every 3s (the Expo server has no WebSocket)
   useEffect(() => {
     if (!token) return;
     load();
-    const t = setInterval(load, 4000);
+    const t = setInterval(load, 3000);
     return () => clearInterval(t);
   }, [load, token]);
 
-  // Live updates via WebSocket room='kds' (mirrors web useWebSocket)
-  useWebSocket({
-    room: 'kds',
-    onMessage: (msg) => {
-      if (msg.type === 'ORDER_CREATED' || msg.type === 'ORDER_STATUS_UPDATED') {
-        if (!mutedRef.current) playChime();
-        load();
-      }
-    },
-  });
+
 
   async function advance(o: Order, next: string) {
     if (!token) return;

@@ -11,14 +11,15 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useWorkspaceAuth } from '../src/hooks/useStaffAuth';
 import { Search, Banknote, Printer, CheckCircle } from 'lucide-react-native';
 import { C, R, shadow } from '../constants/theme';
 import { StaffScreen, StaffHero, StaffGate, HeroChip, STAFF_HERO_IMAGES } from '../src/components/StaffChrome';
 import * as Print from 'expo-print';
-import { getApiBase, setToken } from '../constants/api';
+import { apiGet, apiPatch, setToken } from '../constants/api';
 
 // ---------------------------------------------------------------------------
-// Types — mirrors packages/web-client/src/lib/auth.tsx + order shape
+// Types
 // ---------------------------------------------------------------------------
 type AuthUser = {
   id: string;
@@ -34,111 +35,9 @@ type AuthUser = {
 // Replaces web localStorage with React Native AsyncStorage
 // Keys: campusbite_user / campusbite_token (same as web)
 // ---------------------------------------------------------------------------
-function useAuth() {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [token, setTokenState] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+const useAuth = useWorkspaceAuth;
 
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const rawUser = await AsyncStorage.getItem('campusbite_user');
-        const rawToken = await AsyncStorage.getItem('campusbite_token');
-        if (!mounted) return;
-        if (rawUser) {
-          try {
-            const parsed: AuthUser = JSON.parse(rawUser);
-            setUser(parsed);
-            // Fallback token = user.id if token missing (mirrors web login token = user.id)
-            if (!rawToken && parsed?.id) {
-              setTokenState(parsed.id);
-              setToken(parsed.id);
-            }
-          } catch {}
-        }
-        if (rawToken) {
-          setTokenState(rawToken);
-          setToken(rawToken);
-        }
-      } catch {
-        // ignore
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
 
-  return { user, token, loading };
-}
-
-// ---------------------------------------------------------------------------
-// useWebSocket — port of packages/web-client/src/hooks/useWebSocket.ts
-// Adapted for React Native + getApiBase().
-// POS uses room='pos' (JOIN pos) and refreshes on ORDER_CREATED / ORDER_STATUS_UPDATED.
-// Unlike Kiosk (orderId gated), POS connects immediately when room provided.
-// ---------------------------------------------------------------------------
-function useWebSocket(opts: {
-  room?: string;
-  orderId?: string;
-  onMessage?: (msg: { type: string; payload: any }) => void;
-}) {
-  const wsRef = useRef<WebSocket | null>(null);
-  const onMessageRef = useRef(opts.onMessage);
-  onMessageRef.current = opts.onMessage;
-
-  const connect = useCallback(() => {
-    const base = getApiBase();
-    const wsBase = base.replace(/^http/, 'ws');
-    const url = `${wsBase}/ws`;
-    let ws: WebSocket;
-    try {
-      ws = new WebSocket(url);
-    } catch {
-      return;
-    }
-    wsRef.current = ws;
-    ws.onopen = () => {
-      if (opts.room) {
-        try {
-          ws.send(JSON.stringify({ type: 'JOIN', room: opts.room }));
-        } catch {}
-      }
-      if (opts.orderId) {
-        try {
-          ws.send(JSON.stringify({ type: 'JOIN_ORDER', orderId: opts.orderId }));
-        } catch {}
-      }
-    };
-    ws.onmessage = (ev: MessageEvent) => {
-      try {
-        const msg = JSON.parse(ev.data as string);
-        onMessageRef.current?.(msg);
-      } catch {}
-    };
-    ws.onclose = () => {
-      setTimeout(connect, 2000);
-    };
-    ws.onerror = () => {
-      try {
-        ws.close();
-      } catch {}
-    };
-  }, [opts.room, opts.orderId]);
-
-  useEffect(() => {
-    if (!opts.room && !opts.orderId) return;
-    connect();
-    return () => {
-      try {
-        wsRef.current?.close();
-      } catch {}
-    };
-  }, [connect, opts.room, opts.orderId]);
-}
 
 // ---------------------------------------------------------------------------
 // Status colors — port of PosPage.tsx statusStyle Record<string,string>
@@ -167,74 +66,10 @@ function getStatusStyle(status: string) {
 }
 
 // ---------------------------------------------------------------------------
-// Auth-aware fetch helpers — wrap getApiBase + x-user-id header
-// Mirrors packages/web-client/src/lib/api.ts request<T>
+// API helpers — shared client sends Authorization: Bearer <session token>
 // ---------------------------------------------------------------------------
-async function fallbackFetch(path: string, init?: RequestInit): Promise<Response> {
-    const base = getApiBase();
-    let url = `${base}${path}`;
-    // Node (no window) relative URL fails — use 3000 directly
-    if (!base && typeof window === 'undefined') url = `http://localhost:3000${path}`;
-    let res: Response;
-    try {
-      res = await fetch(url, init as any);
-      const ct = res.headers.get('content-type') || '';
-      const clone = res.clone();
-      const t = await clone.text().catch(()=> '');
-      if (!ct.includes('application/json') && (t.trim().startsWith('<!') || t.trim().startsWith('<html'))) {
-        // Expo web returned HTML (no API) → fallback to hidden 3000
-        const fb = `http://localhost:3000${path}`;
-        const r2 = await fetch(fb, init as any);
-        if (r2.headers.get('content-type')?.includes('application/json') || r2.ok) return r2;
-      }
-      return res;
-    } catch {
-      // network error on same-origin (e.g. Node relative) → try 3000
-      const fb = `http://localhost:3000${path}`;
-      return fetch(fb, init as any);
-    }
-  }
-  async function authedGet(path: string, token: string | null): Promise<any> {
-    const headers: Record<string, string> = {};
-    if (token) headers['x-user-id'] = token;
-    const res = await fallbackFetch(path, { headers });
-    if (!res.ok) {
-      const text = await res.text();
-      let body: any;
-      try {
-        body = JSON.parse(text);
-      } catch {
-        body = text;
-      }
-      throw new Error(typeof body === 'string' ? body : body.error || JSON.stringify(body));
-    }
-    const ct = res.headers.get('content-type') || '';
-    if (ct.includes('application/json')) return res.json();
-    return res.text();
-  }
-  
-  async function authedPatch(path: string, body: any, token: string | null): Promise<any> {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (token) headers['x-user-id'] = token;
-    const res = await fallbackFetch(path, {
-      method: 'PATCH',
-      headers,
-      body: JSON.stringify(body),
-    } as any);
-    if (!res.ok) {
-      const text = await res.text();
-      let payload: any;
-      try {
-        payload = JSON.parse(text);
-      } catch {
-        payload = text;
-      }
-      throw new Error(typeof payload === 'string' ? payload : payload.error || JSON.stringify(payload));
-    }
-    const ct = res.headers.get('content-type') || '';
-    if (ct.includes('application/json')) return res.json();
-    return res.text();
-  }
+const authedGet = (path: string, token: string | null) => apiGet(path, token);
+const authedPatch = (path: string, body: any, token: string | null) => apiPatch(path, body, token);
 
 // ---------------------------------------------------------------------------
 // Receipt HTML builder for expo-print
@@ -270,7 +105,7 @@ function buildReceiptHtml(order: any, items: any[]): string {
 }
 
 // ---------------------------------------------------------------------------
-// Main POS screen — port of packages/web-client/src/apps/pos/PosPage.tsx
+// Main POS screen
 // Keeps all logic: auth gate, 4-char uppercase code, GET by-code, recent GET
 // limit 30 live via room='pos', status colors, PATCH buttons per status,
 // receipt, Print via expo-print. Uses RN View/Text/TextInput/etc.
@@ -297,12 +132,12 @@ export default function PosPage() {
     if (!loading && token) refresh();
   }, [loading, token, refresh]);
 
-  useWebSocket({
-    room: 'pos',
-    onMessage: (m) => {
-      if (m.type === 'ORDER_CREATED' || m.type === 'ORDER_STATUS_UPDATED') refresh();
-    },
-  });
+  // Live updates: poll every 3s (the Expo server has no WebSocket)
+  useEffect(() => {
+    if (!token) return;
+    const t = setInterval(refresh, 3000);
+    return () => clearInterval(t);
+  }, [token, refresh]);
 
   async function lookup() {
     setError('');

@@ -8,7 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SvgXml } from 'react-native-svg';
 import QRCode from 'qrcode';
 import { Star, Clock, ArrowRight, QrCode, Store, X, Wifi } from 'lucide-react-native';
-import { apiGet } from '../constants/api';
+import { apiGet, publicOrigin } from '../constants/api';
 import { C } from '../constants/theme';
 import { stallHeroImage as heroImage } from '../lib/stallImages';
 import { CustomerNav } from '../src/components/CustomerNav';
@@ -95,11 +95,7 @@ export default function Home() {
   }, [index, stalls.length, paused, sheet, qrStall]);
 
   // Same origin logic as kiosk.tsx so QRs match
-  const origin = (() => {
-    try { if (typeof window !== 'undefined' && (window as any).location?.origin) return (window as any).location.origin; } catch {}
-    if (health?.ip) return `http://${health.ip}:${health.port || 8081}`;
-    return 'http://localhost:8081';
-  })();
+  const origin = publicOrigin(health);
   const stallUrl = (id: string) => `${origin}/kiosk?stall=${id}`;
   const openStall = (id: string) => { setSheet(null); setQrStall(null); router.push(`/kiosk?stall=${id}` as any); };
 

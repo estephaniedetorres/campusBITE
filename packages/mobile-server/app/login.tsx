@@ -1,118 +1,97 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
-  StyleSheet,
-  ActivityIndicator,
-  Image,
-} from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Image } from 'react-native';
 import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Eye, EyeOff, ArrowRight, Banknote, ChefHat, Boxes, User, KeyRound } from 'lucide-react-native';
-import { setToken, apiPost } from '../constants/api';
+import { Eye, EyeOff, ArrowRight, Banknote, ChefHat, Boxes, User, KeyRound, ShieldCheck } from 'lucide-react-native';
+import { ApiError, apiPost } from '../constants/api';
 import { C, R, shadow } from '../constants/theme';
 import { StaffScreen, StaffHero, STAFF_HERO_IMAGES } from '../src/components/StaffChrome';
+import { useStaffAuth, saveSession, AuthUser } from '../src/hooks/useStaffAuth';
 
-type AuthUser = {
-  id: string;
-  username: string;
-  role: 'ADMIN' | 'STALL_OWNER';
-  stall_id: string | null;
-  stall_name: string | null;
-  display_name: string;
-};
+const MIN_PASSWORD = 8;
 
-function useAuth() {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [token, setTokenState] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const rawUser = await AsyncStorage.getItem('campusbite_user');
-        const rawToken = await AsyncStorage.getItem('campusbite_token');
-        if (!mounted) return;
-        if (rawUser) {
-          try {
-            const parsed: AuthUser = JSON.parse(rawUser);
-            setUser(parsed);
-            if (!rawToken && parsed?.id) {
-              setTokenState(parsed.id);
-              setToken(parsed.id);
-            }
-          } catch {}
-        }
-        if (rawToken) {
-          setTokenState(rawToken);
-          setToken(rawToken);
-        }
-      } catch {
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  const logout = async () => {
-    try {
-      await AsyncStorage.removeItem('campusbite_user');
-      await AsyncStorage.removeItem('campusbite_token');
-    } catch {}
-    setUser(null);
-    setTokenState(null);
-    setToken(null);
-  };
-
-  return { user, token, loading, setUser, setTokenState, logout };
+function PasswordField({ label, value, onChange, onSubmit, placeholder = '••••••••', autoFocus }: {
+  label: string; value: string; onChange: (t: string) => void; onSubmit?: () => void; placeholder?: string; autoFocus?: boolean;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <View style={styles.field}>
+      <Text style={styles.label}>{label}</Text>
+      <View style={styles.inputWrap}>
+        <KeyRound size={18} color={C.muted} />
+        <TextInput
+          value={value}
+          onChangeText={onChange}
+          placeholder={placeholder}
+          placeholderTextColor="#A8A29E"
+          secureTextEntry={!show}
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoFocus={autoFocus}
+          style={styles.input}
+          textContentType="password"
+          onSubmitEditing={onSubmit}
+          accessibilityLabel={label}
+        />
+        <TouchableOpacity onPress={() => setShow((v) => !v)} style={styles.eyeBtn} accessibilityLabel={show ? `Hide ${label}` : `Show ${label}`}>
+          {show ? <EyeOff size={18} color={C.muted} /> : <Eye size={18} color={C.muted} />}
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 }
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user, loading: authLoading, logout, setUser, setTokenState } = useAuth();
+  const { user, loading: authLoading, logout, setUser, setTokenState } = useStaffAuth();
   const [username, setUsername] = useState('');
-  const [pin, setPin] = useState('');
-  const [showPin, setShowPin] = useState(false);
+  const [password, setPassword] = useState('');
   const [err, setErr] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
+  // Change-password form (forced after an admin reset, or optional from the signed-in view)
+  const [changing, setChanging] = useState(false);
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [notice, setNotice] = useState('');
 
   async function handleLogin() {
     setErr('');
     const u = username.trim();
-    const p = pin.trim();
-    if (!u || !p) {
-      setErr('Username and PIN required');
-      return;
-    }
-    setLoading(true);
+    if (!u || !password) { setErr('Enter your username and password'); return; }
+    setBusy(true);
     try {
-      const data: any = await apiPost('/api/auth/login', { username: u, pin: p });
-      const loggedUser: AuthUser = data.user;
-      const tok: string = data.token || loggedUser.id;
-      await AsyncStorage.setItem('campusbite_user', JSON.stringify(loggedUser));
-      await AsyncStorage.setItem('campusbite_token', tok);
-      setToken(tok);
-      setUser(loggedUser);
-      setTokenState(tok);
+      const data: any = await apiPost('/api/auth/login', { username: u, password }, null);
+      await saveSession(data.user, data.token);
+      setTokenState(data.token);
+      setUser(data.user);
+      if (data.mustChangePassword) { setCurrent(password); setChanging(true); }
       setUsername('');
-      setPin('');
-      // Stay here: the signed-in view shows the Cashier / Kitchen / Admin picker
+      setPassword('');
     } catch (e: any) {
-      setErr(e?.message ?? String(e));
+      if (e instanceof ApiError && e.status === 429) setErr(`Too many attempts. Wait ${e.retryAfter ?? 'a few'} seconds and try again.`);
+      else if (e instanceof ApiError && e.status === 401) setErr(`Wrong username or password.${e.retryAfter ? ` Try again in ${e.retryAfter}s.` : ''}`);
+      else setErr(e?.message ?? String(e));
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
   }
 
-  async function handleLogout() {
-    await logout();
+  async function handleChangePassword() {
+    setErr('');
+    if (next.length < MIN_PASSWORD) { setErr(`New password must be at least ${MIN_PASSWORD} characters`); return; }
+    if (next !== confirm) { setErr('New passwords do not match'); return; }
+    setBusy(true);
+    try {
+      const data: any = await apiPost('/api/auth/change-password', { currentPassword: current, newPassword: next });
+      setUser(data.user as AuthUser);
+      setChanging(false);
+      setCurrent(''); setNext(''); setConfirm('');
+      setNotice('Password changed. Other devices were logged out.');
+    } catch (e: any) {
+      setErr(e?.message ?? String(e));
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (authLoading) {
@@ -121,6 +100,43 @@ export default function LoginPage() {
         <ActivityIndicator color={C.green} />
         <Text style={styles.loadingText}>Loading…</Text>
       </View>
+    );
+  }
+
+  // Forced (temporary password) or voluntary password change
+  if (user && (changing || user.must_change_password)) {
+    const forced = !!user.must_change_password;
+    return (
+      <StaffScreen
+        nav={!forced}
+        hero={
+          <StaffHero image={STAFF_HERO_IMAGES.login} eyebrow={forced ? 'One more step' : 'Account'}
+            title="Set a new password" subtitle={forced ? 'You signed in with a temporary password. Choose your own to continue.' : `Signed in as @${user.username}`} user={user} />
+        }
+      >
+        <View style={styles.formCard}>
+          <View style={styles.brandRow}>
+            <ShieldCheck size={22} color={C.green} />
+            <Text style={styles.brandText}>At least {MIN_PASSWORD} characters</Text>
+          </View>
+          <PasswordField label={forced ? 'Temporary password' : 'Current password'} value={current} onChange={setCurrent} autoFocus={!current} />
+          <PasswordField label="New password" value={next} onChange={setNext} />
+          <PasswordField label="Confirm new password" value={confirm} onChange={setConfirm} onSubmit={handleChangePassword} />
+          {err ? <View style={styles.errorBox}><Text style={styles.errorText}>{err}</Text></View> : null}
+          <TouchableOpacity onPress={handleChangePassword} disabled={busy} style={[styles.loginBtn, busy && styles.loginBtnDisabled]} activeOpacity={0.9}>
+            <Text style={styles.loginBtnText}>{busy ? 'Saving…' : 'Save password'}</Text>
+          </TouchableOpacity>
+        </View>
+        {forced ? (
+          <TouchableOpacity onPress={logout} style={styles.btnGhost} activeOpacity={0.9}>
+            <Text style={styles.btnGhostText}>Log out</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity onPress={() => { setChanging(false); setErr(''); }} style={styles.btnGhost} activeOpacity={0.9}>
+            <Text style={styles.btnGhostText}>Cancel</Text>
+          </TouchableOpacity>
+        )}
+      </StaffScreen>
     );
   }
 
@@ -135,9 +151,10 @@ export default function LoginPage() {
       <StaffScreen
         hero={
           <StaffHero image={STAFF_HERO_IMAGES.login} eyebrow={user.role === 'ADMIN' ? 'Canteen manager' : user.stall_name || 'Stall owner'}
-            title={`Hi, ${user.display_name.split(' ')[0]}!`} subtitle="Where are you working today?" user={user} />
+            title={`Hi, ${(user.display_name || user.username).split(' ')[0]}!`} subtitle="Where are you working today?" user={user} />
         }
       >
+        {notice ? <View style={styles.noticeBox}><Text style={styles.noticeText}>{notice}</Text></View> : null}
         {tiles.map(({ to, label, sub, Icon }) => (
           <TouchableOpacity key={to} onPress={() => router.push(to as any)} style={styles.tile} activeOpacity={0.9}>
             <View style={styles.tileIcon}><Icon size={22} color={C.green} /></View>
@@ -148,9 +165,14 @@ export default function LoginPage() {
             <ArrowRight size={18} color={C.green} />
           </TouchableOpacity>
         ))}
-        <TouchableOpacity onPress={handleLogout} style={styles.btnGhost} activeOpacity={0.9}>
-          <Text style={styles.btnGhostText}>Log out @{user.username}</Text>
-        </TouchableOpacity>
+        <View style={styles.ghostRow}>
+          <TouchableOpacity onPress={() => { setNotice(''); setErr(''); setChanging(true); }} style={styles.btnGhost} activeOpacity={0.9}>
+            <Text style={styles.btnGhostText}>Change password</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={logout} style={styles.btnGhost} activeOpacity={0.9}>
+            <Text style={styles.btnGhostText}>Log out @{user.username}</Text>
+          </TouchableOpacity>
+        </View>
       </StaffScreen>
     );
   }
@@ -187,41 +209,18 @@ export default function LoginPage() {
           </View>
         </View>
 
-        <View style={styles.field}>
-          <Text style={styles.label}>PIN</Text>
-          <View style={styles.inputWrap}>
-            <KeyRound size={18} color={C.muted} />
-            <TextInput
-              value={pin}
-              onChangeText={setPin}
-              placeholder="••••••••"
-              placeholderTextColor="#A8A29E"
-              secureTextEntry={!showPin}
-              autoCapitalize="none"
-              autoCorrect={false}
-              style={styles.input}
-              textContentType="password"
-              onSubmitEditing={handleLogin}
-              accessibilityLabel="PIN"
-            />
-            <TouchableOpacity onPress={() => setShowPin((v) => !v)} style={styles.eyeBtn}
-              accessibilityLabel={showPin ? 'Hide PIN' : 'Show PIN'}>
-              {showPin ? <EyeOff size={18} color={C.muted} /> : <Eye size={18} color={C.muted} />}
-            </TouchableOpacity>
-          </View>
-        </View>
+        <PasswordField label="Password" value={password} onChange={setPassword} onSubmit={handleLogin} />
 
-        {err ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{err}</Text>
-          </View>
-        ) : null}
+        {err ? <View style={styles.errorBox}><Text style={styles.errorText}>{err}</Text></View> : null}
 
-        <TouchableOpacity onPress={handleLogin} disabled={loading}
-          style={[styles.loginBtn, loading && styles.loginBtnDisabled]} activeOpacity={0.9}>
-          <Text style={styles.loginBtnText}>{loading ? 'Logging in…' : 'Log in'}</Text>
-          {!loading && <ArrowRight size={18} color="#fff" />}
+        <TouchableOpacity onPress={handleLogin} disabled={busy} style={[styles.loginBtn, busy && styles.loginBtnDisabled]} activeOpacity={0.9}>
+          <Text style={styles.loginBtnText}>{busy ? 'Logging in…' : 'Log in'}</Text>
+          {!busy && <ArrowRight size={18} color="#fff" />}
         </TouchableOpacity>
+
+        <Text style={styles.forgot}>
+          Forgot your password? Ask the canteen manager to reset it in Admin → Users.
+        </Text>
       </View>
 
       <TouchableOpacity onPress={() => router.push('/' as any)} style={styles.btnGhost} activeOpacity={0.9}>
@@ -247,14 +246,18 @@ const styles = StyleSheet.create({
   eyeBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   errorBox: { backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA', borderRadius: 16, padding: 12 },
   errorText: { fontSize: 14, color: C.danger, lineHeight: 20 },
+  noticeBox: { backgroundColor: C.greenSoft, borderRadius: 16, padding: 12 },
+  noticeText: { fontSize: 14, color: C.green, fontWeight: '600' },
   loginBtn: { backgroundColor: C.green, borderRadius: R.pill, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   loginBtnDisabled: { opacity: 0.6 },
   loginBtnText: { color: '#fff', fontWeight: '800', fontSize: 16 },
+  forgot: { fontSize: 13, color: C.muted, textAlign: 'center', lineHeight: 18 },
 
   tile: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: C.card, borderRadius: R.card, padding: 18, borderWidth: 1, borderColor: C.line, ...shadow.card },
   tileIcon: { width: 52, height: 52, borderRadius: 26, backgroundColor: C.cream, alignItems: 'center', justifyContent: 'center' },
   tileTitle: { fontSize: 18, fontWeight: '700', color: C.ink, letterSpacing: -0.3 },
   tileSub: { fontSize: 13, color: C.muted, marginTop: 2 },
+  ghostRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center' },
   btnGhost: { alignSelf: 'center', paddingHorizontal: 20, paddingVertical: 12, borderRadius: R.pill, borderWidth: 1, borderColor: C.line, backgroundColor: C.card },
   btnGhostText: { fontSize: 14, fontWeight: '700', color: C.green },
 });

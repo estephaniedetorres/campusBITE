@@ -1,5 +1,5 @@
+import { randomUUID as uuidv4 } from 'node:crypto';
 import { db } from './database';
-import { v4 as uuidv4 } from 'uuid';
 
 export interface BomDeductionResult {
   success: boolean;
@@ -65,6 +65,6 @@ export const rollbackBomTransaction = db.transaction((
   }
   for (const [ingId, { total }] of needs) {
     db.prepare(`UPDATE ingredients SET current_stock = current_stock + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(total, ingId);
-    db.prepare(`INSERT INTO stock_logs (id, ingredient_id, change_type, quantity_delta, reason, order_id) VALUES (?,?,?,?,?,?)`).run(uuidv4(), ingId, total, `ROLLBACK for cancelled order ${orderId}`, 'ROLLBACK', orderId);
+    db.prepare(`INSERT INTO stock_logs (id, ingredient_id, change_type, quantity_delta, reason, order_id) VALUES (?,?,'ROLLBACK',?,?,?)`).run(uuidv4(), ingId, total, `Rollback for cancelled order ${orderId}`, orderId);
   }
 });

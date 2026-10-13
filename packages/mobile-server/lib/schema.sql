@@ -139,7 +139,9 @@ CREATE TABLE IF NOT EXISTS daily_audits (
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     username TEXT NOT NULL UNIQUE,
-    pin TEXT NOT NULL, -- simple 4-6 digit PIN for offline use (not hashed for demo, hash in production)
+    pin TEXT NOT NULL DEFAULT '', -- legacy plain-text column, always emptied after migration to password_hash
+    password_hash TEXT,           -- scrypt$N$r$p$salt$hash (lib/server/password.ts)
+    must_change_password INTEGER NOT NULL DEFAULT 0,
     role TEXT NOT NULL CHECK(role IN ('ADMIN','STALL_OWNER')),
     stall_id TEXT,
     display_name TEXT,
@@ -149,3 +151,14 @@ CREATE TABLE IF NOT EXISTS users (
 );
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+
+-- 11. SESSIONS (random bearer tokens; only the SHA-256 of the token is stored)
+CREATE TABLE IF NOT EXISTS sessions (
+    token_hash TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);

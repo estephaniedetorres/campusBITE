@@ -4,27 +4,25 @@ import React from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView, ScrollViewProps } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Home, Banknote, ChefHat, Boxes, LogOut, LogIn, Shield } from 'lucide-react-native';
 import { C, R, shadow } from '../../constants/theme';
-import { setToken } from '../../constants/api';
+import { resolveImageUrl } from '../../constants/api';
+import { stockImage } from '../../lib/stockImages';
+import { logoutSession } from '../hooks/useStaffAuth';
 
+// Bundled offline photos (served by the API at /api/images/*)
 export const STAFF_HERO_IMAGES = {
-  pos: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=1400&auto=format&fit=crop&q=70',
-  kds: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=1400&auto=format&fit=crop&q=70',
-  admin: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1400&auto=format&fit=crop&q=70',
-  login: 'https://images.unsplash.com/photo-1567521464027-f127ff144326?w=1400&auto=format&fit=crop&q=70',
+  pos: stockImage('staff-pos'),
+  kds: stockImage('staff-kds'),
+  admin: stockImage('canteen'),
+  login: stockImage('staff-login'),
 } as const;
 
 /** Bottom padding a staff screen should reserve so content clears the floating nav. */
 export const STAFF_NAV_SPACE = 120;
 
-export async function staffLogout() {
-  try {
-    await AsyncStorage.multiRemove(['campusbite_user', 'campusbite_token']);
-  } catch {}
-  setToken(null);
-}
+/** Revokes the session on the server, then clears it from this device. */
+export const staffLogout = logoutSession;
 
 function initials(name?: string | null) {
   if (!name) return 'CB';
@@ -50,7 +48,7 @@ export function StaffHero({ image, eyebrow, title, subtitle, user, children, com
   const insets = useSafeAreaInsets();
   return (
     <View style={[styles.hero, { paddingTop: insets.top + 12, minHeight: compact ? 230 : 280 }]}>
-      <Image source={{ uri: image }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+      <Image source={{ uri: resolveImageUrl(image) }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
       <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.40)' }]} />
       <View style={styles.heroScrim} />
 

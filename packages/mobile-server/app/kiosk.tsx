@@ -14,10 +14,10 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getApiBase, apiGet, apiPost, initApiBase } from '../constants/api';
+import { getApiBase, apiGet, apiPost, initApiBase, publicOrigin } from '../constants/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { saveMyOrder, updateMyOrders } from '../lib/myOrders';
-import { stallHeroImage } from '../lib/stallImages';
+import { stallHeroImage, menuItemImage } from '../lib/stallImages';
 import { C, R, shadow } from '../constants/theme';
 import { ShoppingCart, Plus, Minus, Star, Clock, QrCode, Heart, X, AlertTriangle, RefreshCw, Copy, Check, ArrowLeft, ChevronRight, ReceiptText } from 'lucide-react-native';
 import { SvgXml } from 'react-native-svg';
@@ -25,7 +25,7 @@ import QRCode from 'qrcode';
 import * as Clipboard from 'expo-clipboard';
 
 // ---------------------------------------------------------------------------
-// Types — mirrors packages/web-client/src/apps/kiosk/KioskPage.tsx
+// Types
 // ---------------------------------------------------------------------------
 type MenuItem = {
   id: string;
@@ -65,112 +65,10 @@ const statusLabel = (s?: string) => (s ? STATUS_LABELS[s] || s : '');
 const FAVS_KEY = 'campusbite_favs';
 const LAST_ORDER_KEY = 'campusbite_last_order';
 
-// ---------------------------------------------------------------------------
-// Fallback images — exact copy from web KioskPage
-// ---------------------------------------------------------------------------
-const fallbackImages: Record<string, string> = {
-  'item-burger-classic':
-    'https://images.unsplash.com/photo-1568909344668-6f14a07b56a0?w=400&auto=format&fit=crop&q=60',
-  'item-burger-double':
-    'https://images.unsplash.com/photo-1550547660-d9450f859349?w=400&auto=format&fit=crop&q=60',
-  'item-rice-chicken':
-    'https://images.unsplash.com/photo-1604908177223-81e336fca6a2?w=400&auto=format&fit=crop&q=60',
-  'item-coffee-latte':
-    'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400&auto=format&fit=crop&q=60',
-  'item-milk-tea':
-    'https://images.unsplash.com/photo-1571934811356-5cc061b6821f?w=400&auto=format&fit=crop&q=60',
-  'item-croissant':
-    'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&auto=format&fit=crop&q=60',
-};
+// Offline photos (bundled or uploaded) — see lib/stallImages.ts
+const getMenuImage = (item: MenuItem) => menuItemImage(item);
 
-function getMenuImage(item: MenuItem): string {
-  if (item.image_url) return item.image_url;
-  if (fallbackImages[item.id]) return fallbackImages[item.id];
-  const n = item.name.toLowerCase();
-  if (n.includes('burger')) return fallbackImages['item-burger-classic'];
-  if (n.includes('chicken') || n.includes('rice')) return fallbackImages['item-rice-chicken'];
-  if (n.includes('latte') || n.includes('coffee')) return fallbackImages['item-coffee-latte'];
-  if (n.includes('milk') || n.includes('tea')) return fallbackImages['item-milk-tea'];
-  if (n.includes('croissant')) return fallbackImages['item-croissant'];
-  return 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&auto=format&fit=crop&q=60';
-}
 
-// ---------------------------------------------------------------------------
-// Mobile WebSocket hook — port of packages/web-client/src/hooks/useWebSocket.ts
-// Replaces window/localStorage usage with React Native + getApiBase()
-// ---------------------------------------------------------------------------
-function useMobileWebSocket(opts: {
-  orderId?: string;
-  onMessage?: (msg: { type: string; payload: any }) => void;
-}) {
-  const [status, setStatus] = useState<'connecting' | 'open' | 'closed'>('connecting');
-  const wsRef = useRef<WebSocket | null>(null);
-  const onMessageRef = useRef(opts.onMessage);
-  onMessageRef.current = opts.onMessage;
-
-  const connect = useCallback(() => {
-    const base = getApiBase();
-    // http://192.168.x:3000 -> ws://192.168.x:3000/ws
-    const wsBase = base.replace(/^http/, 'ws');
-    const url = `${wsBase}/ws`;
-    let ws: WebSocket;
-    try {
-      ws = new WebSocket(url);
-    } catch {
-      return;
-    }
-    wsRef.current = ws;
-    setStatus('connecting');
-    ws.onopen = () => {
-      setStatus('open');
-      if (opts.orderId) {
-        try {
-          ws.send(JSON.stringify({ type: 'JOIN_ORDER', orderId: opts.orderId }));
-        } catch {}
-      }
-    };
-    ws.onmessage = (ev: MessageEvent) => {
-      try {
-        const msg = JSON.parse(ev.data as string);
-        onMessageRef.current?.(msg);
-      } catch {}
-    };
-    ws.onclose = () => {
-      setStatus('closed');
-      // auto-reconnect after 2s (like web)
-      setTimeout(connect, 2000);
-    };
-    ws.onerror = () => {
-      try {
-        ws.close();
-      } catch {}
-    };
-  }, [opts.orderId]);
-
-  useEffect(() => {
-    if (!opts.orderId) {
-      // No order yet — keep closed until first checkout (saves hotspot battery)
-      setStatus('closed');
-      return;
-    }
-    connect();
-    return () => {
-      try {
-        wsRef.current?.close();
-      } catch {}
-    };
-  }, [connect, opts.orderId]);
-
-  const send = useCallback((data: any) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      try {
-        wsRef.current.send(JSON.stringify(data));
-      } catch {}
-    }
-  }, []);
-
-  return { status, send };
-}
 
 // ---------------------------------------------------------------------------
 // QR Svg component — uses qrcode (npm) + react-native-svg (SvgXml)
@@ -400,17 +298,22 @@ export default function KioskPage() {
       });
   }, [stallId]);
 
-  // Live tracker via WebSocket — replaces web useWebSocket
-  useMobileWebSocket({
-    orderId: lastOrder?.order?.id,
-    onMessage: (msg) => {
-      if (msg.type === 'ORDER_STATUS_UPDATED' && msg.payload?.id === lastOrder?.order?.id) {
-        setLiveStatus(msg.payload.status);
-        setLastOrder((prev: any) => (prev ? { ...prev, order: msg.payload } : prev));
-        updateMyOrders([{ id: msg.payload.id, status: msg.payload.status }]).catch(() => {});
-      }
-    },
-  });
+  // Live tracker: poll the order every 4s until it's finished (the Expo server has no WebSocket)
+  const trackedId: string | undefined = lastOrder?.order?.id;
+  const trackedDone = ['COMPLETED', 'CANCELLED'].includes(liveStatus || lastOrder?.order?.status);
+  useEffect(() => {
+    if (!trackedId || trackedDone) return;
+    const t = setInterval(async () => {
+      try {
+        const fresh: any = await apiGet(`/api/orders/${trackedId}`, null);
+        if (!fresh?.order) return;
+        setLiveStatus(fresh.order.status);
+        setLastOrder((prev: any) => (prev?.order?.id === trackedId ? { ...prev, order: fresh.order } : prev));
+        updateMyOrders([{ id: trackedId, status: fresh.order.status }]).catch(() => {});
+      } catch {}
+    }, 4000);
+    return () => clearInterval(t);
+  }, [trackedId, trackedDone]);
 
   const currentStall = stalls.find((s) => s.id === stallId);
 
@@ -515,14 +418,7 @@ export default function KioskPage() {
   const [copied, setCopied] = useState(false);
   useEffect(() => { apiGet('/api/health').then(setHealth).catch(()=>{}); }, [apiBase]);
   // Absolute QR URL for scanning from another device — use window.origin or health.ip:8081
-  const getAbsoluteOrigin = () => {
-    try {
-      if (typeof window !== 'undefined' && (window as any).location?.origin) return (window as any).location.origin;
-    } catch {}
-    if (health?.ip) return `http://${health.ip}:${health.port || 8081}`;
-    return 'http://localhost:8081';
-  };
-  const qrOrigin = getAbsoluteOrigin();
+  const qrOrigin = publicOrigin(health);
   // Every stall has its own QR: owner → own stall, QR link → that stall, otherwise the stall being viewed
   const effectiveQrStall = (authUser?.role === 'STALL_OWNER' && authUser.stall_id ? authUser.stall_id : qrStall) || stallId;
   const qrValue = effectiveQrStall ? `${qrOrigin}/kiosk?stall=${effectiveQrStall}${qrTable ? `&table=${qrTable}` : ''}` : '';
@@ -634,7 +530,7 @@ export default function KioskPage() {
                   ]}
                 >
                   {s.logo_url ? (
-                    <Image source={{ uri: s.logo_url }} style={styles.stallLogo} />
+                    <Image source={{ uri: stallHeroImage(s) }} style={styles.stallLogo} />
                   ) : null}
                   <Text
                     style={[

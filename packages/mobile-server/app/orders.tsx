@@ -1,5 +1,5 @@
 // My Orders — per-device tracker. Reads saved order IDs from AsyncStorage and
-// polls public GET /api/orders/:id (works on both Expo :8081 API and server-core :3000).
+// polls public GET /api/orders/:id on the Expo server (:8081).
 import { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
