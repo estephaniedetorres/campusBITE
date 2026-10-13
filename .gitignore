@@ -1,13 +1,8 @@
 node_modules
-data/*.db
-data/*.db-*
 .env
-packages/server-core/data
-
-phone-package/node-*.tar.xz
-phone-package/server-core-dist
-phone-package/web-client-dist
 .expo
 .expo-shared
 packages/mobile-server/.expo
 /tsconfig.json
+# Leftover database from the removed server-core app — delete the folder once nothing holds it open
+packages/server-core/

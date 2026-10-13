@@ -1,71 +1,53 @@
-# CampusBITE Demo — Phone as Server (Offline, No Load)
+# CampusBITE Demo — Offline on a Phone Hotspot
 
-> **Decision for reliable demo (you said phone as server, PC works but Termux not):**
-> **Phone = Hotspot Network Server** (provides `192.168.43.1` LAN, no internet), **PC = Node Compute** (runs `node dist/server.js` on that LAN via `0.0.0.0:3000`). This is **still phone-as-server** per spec — hotspot is the server, Node code is identical on phone (Termux) or PC. Termux phone-compute is same code (`node:sqlite` fallback) and works after AP isolation fix, but Samsung AP isolation makes Termux flaky for demo — PC path is 100% reliable and already proven `it works in pc when server is pc`.
+**Setup:** the phone provides the Wi-Fi hotspot (no internet). The PC joins it and runs the Expo server on `:8081`, which serves both the app and the API. Students order in the browser; staff use Expo Go on Android.
 
-## Pre-Demo (with internet, 10 mins, do once)
+**Pitch:** "CampusBITE is offline-first on a phone hotspot. One PC on the hotspot runs the app and its SQLite database; students just scan a QR."
 
-```bash
-git clone https://github.com/estephaniedetorres/campusBITE.git
-cd campusBITE
-npm install
-npx tsx packages/server-core/src/db/seed.ts
-# Verify PC:
-node packages/server-core/dist/server.js
-# check http://localhost:3000/api/health → {"ok":true}
-# stop with Ctrl+C
-```
+## One-time prep (with internet)
 
-Print QR (Admin → Menu → Stall QR Codes): `Admin` login `admin/admin123` → `Menu` → each stall shows QR `http://192.168.43.1:3000/kiosk?stall=stall-001` (and `...&table=1`). Print or screenshot.
+1. On the PC:
+   ```bash
+   git clone https://github.com/estephaniedetorres/campusBITE.git
+   cd campusBITE
+   npm install
+   npm run seed
+   npm test            # should be all green
+   ```
+2. On each **Android** staff phone, install the Expo Go build that matches SDK 52 (the Play Store version only supports the latest SDK and won't open this project). Either connect the phone by USB with USB debugging on, run `npm run demo` while online and press `a` (Expo CLI installs the right Expo Go), or download the SDK 52 Expo Go APK from https://expo.dev/go.
+3. Turn the hotspot on, set **WPA2** with a strong password, band 2.4 GHz, **AP isolation off**.
 
-## Demo Day (no load, offline, 5 mins)
+## Demo day
 
-**You need:** 1 Samsung (hotspot), 1 PC (Node), 2 client phones (Kiosk + Kitchen OR POS).
+You need: 1 phone (hotspot), 1 PC (server), 1+ Android staff phones with Expo Go, 1+ student phones (any browser).
 
-1. **Phone hotspot ON** (Samsung: Settings → Connections → Mobile Hotspot → ON, Band 2.4GHz, AP isolation OFF). **Keep Termux out of it for demo** — PC will be compute.
+1. **Hotspot on.** PC joins it (Windows says "No internet", keep connected).
+2. **PC:** from the repo root:
+   ```bash
+   npm run demo
+   ```
+   (Same as `npx expo start --lan --offline`; add `--web` to also open it in the PC browser. Don't drop `--offline`: without internet the CLI can hang checking expo.dev. Don't use `--clear` on demo day.)
+   Note the LAN address it prints, e.g. `exp://192.168.43.23:8081` → the PC's IP is `192.168.43.23`. Keep this window open.
+   **Warm up:** open the landing page, kiosk, POS, Kitchen and Admin once yourself. The first load of each page is built on the spot and can take 30–60s.
+3. **Staff phones:** join the hotspot → open Expo Go → scan the QR code in the PC terminal → Log in.
+4. **Stall QR codes:** Admin → Menu → QR Codes shows one QR per stall (`http://<PC-IP>:8081/kiosk?stall=stall-001`). Show or print them. The PC's IP can change between sessions, so regenerate the QRs on the day.
+5. **Students:** join the hotspot → camera → scan the stall QR → order in the browser.
 
-2. **PC → WiFi → join phone hotspot** (shows No internet → Keep). **PC:**
-```bash
-cd CampusBITE
-node packages/server-core/dist/server.js
-# MUST show: Hotspot: http://192.168.43.1:3000  (or 192.168.43.XX:3000 — use that IP)
-# Keep this window OPEN.
-```
+> **Demo logins** (remove before production — see README): `admin / admin123` (all stalls), `potato / potato123` (Potato Corner), `matees / matees123` (Matees). New accounts and reset passwords must be 8+ characters.
 
-3. **All clients → join same hotspot** → browser:
-   - **Customer:** Scan QR or `http://192.168.43.1:3000/kiosk?stall=stall-001` → add Cheese Fries → Checkout → note `A3X9` + Live Tracker (WS).
-   - **Cashier (POS):** `http://192.168.43.1:3000/login` → `potato/potato123` → `POS` → enter `A3X9` → Confirm Cash → triggers BOM `UPDATE ingredients` atomically.
-   - **Kitchen (KDS):** `http://192.168.43.1:3000/login` → `potato/potato123` → `KDS` → New → Preparing → Ready (chime).
-   - **Manager (Admin):** `http://192.168.43.1:3000/login` → `admin/admin123` → `Admin → Ingredients` → see potato 15000→14850, `BOM`, `EOD Audit`, `Users` (hybrid: ADMIN all, STALL_OWNER own stall only — try `matees/matees123` fails to edit Potato Corner stall with 403).
+## 5-minute script
 
-## 5-Min Script
-
-> "CampusBITE is offline-first. Phone is hotspot server `192.168.43.1`, Node+SQLite+WS runs on `0.0.0.0:3000` (here on PC for demo stability, same code runs on phone via Termux `node dist/server.js`). No internet. Kiosk is only public."
-
-1. **Kiosk QR (30s):** Customer scans QR → `?stall=stall-001` auto-filters `KioskPage.tsx:13` → cart → checkout `A3X9`.
-
-2. **POS (60s):** Cashier logs in `potato/potato123` → `POS` shows only `stall-001` orders (hybrid `orderRoutes.ts:82` `STALL_OWNER` filter) → lookup `A3X9` → Confirm → BOM deduct `bomEngine.ts:47` transaction.
-
-3. **KDS (60s):** Kitchen `potato/potato123` → `KDS` shows only Potato Corner tickets, chime on `WS /ws` `gateway.ts:16`, Kanban.
-
-4. **Admin Hybrid (90s):** `admin` → `Menu` → create `Potato Special` in Potato Corner stall OK, try Matees stall → `403` (`menuRoutes.ts:47`). `matees` login → only `Matees` menu. `Inventory/BOM/Audits` are ADMIN only.
-
-5. **Phone as Server (30s):** Show Termux `node dist/server.js` log with `Hotspot: http://192.168.43.1:3000` and `curl http://192.168.43.1:3000/api/health` → `ok:true`. Emphasize same `dist` runs on phone via `bash scripts/phone-server.sh` (bypasses `pkg` mirrors, Node 24 `node:sqlite`).
-
-## If Termux phone-compute must be shown (extra credit)
-
-After demo via PC, do quick Termux true phone-compute (needs one-time `pkg` with internet, then offline):
-```bash
-# With internet, hotspot OFF:
-pkg update -y; pkg install nodejs git -y; node -v # v22.5+
-cd ~/CampusBITE; git pull; node packages/server-core/dist/server.js
-# Hotspot ON first, then node → http://192.168.43.1:3000
-# If `192.168.43.1` timeout but `localhost` ok → Samsung AP isolation ON → Configure → Advanced → AP isolation OFF.
-```
+1. **Order (60s):** Student scans the Potato Corner QR → adds Cheese Fries → Checkout → gets a pickup code like `A3X9`. Tap **Orders** to show it's tracked on this device, with no account.
+2. **Pay (60s):** Cashier (Expo Go) → `potato` → **POS** → enters `A3X9` → **Confirm cash**. Stock is deducted from the recipe BOM in one transaction.
+3. **Cook (60s):** **Kitchen** shows the ticket within ~3s and chimes → Start cooking → Mark ready. The student's phone updates to "Ready for pickup".
+4. **Permissions (60s):** As `potato`, the Matees menu can't be edited; Inventory, Audits and Users are admin-only. As `admin`, show **Users → Reset password**: a one-time password that must be changed at next login.
+5. **Offline (30s):** Everything, including photos, is served from the PC; there's no internet on the hotspot.
 
 ## Troubleshooting
 
-- `site can't be reached` → server window closed? Keep `node ...` open. Use `192.168.43.1` not `localhost` on clients. Check `http://192.168.43.1:3000/api/health` first.
-- `address already in use` → `pkill node; pkill -f http.server`
-- Termux `pkg` mirrors `none accessible` → `termux-change-repo` → other mirror, or use offline `phone-package/` via USB (already prebuilt dist, no `npm build` needed on phone).
-
+- **Staff phone can't load the app:** same hotspot? Open `http://<PC-IP>:8081/api/health` in its browser; expect `{"ok":true,...}`. If it times out, turn AP isolation off and allow Node.js through Windows Firewall for the network profile the hotspot uses (often "Public").
+- **"Project is incompatible with this version of Expo Go":** install the SDK 52 Expo Go (prep step 2).
+- **QR opens the wrong address:** the PC's IP changed; reopen Admin → QR Codes to regenerate.
+- **"Too many attempts":** wrong passwords add a short wait (up to 30s). Wait and retry.
+- **Admin forgot the password:** on the PC, `npm run reset-admin` prints a one-time password.
+- **Port 8081 in use:** close the other Expo/Metro window, or `npx kill-port 8081`.

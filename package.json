@@ -2,20 +2,19 @@
   "name": "campusbite",
   "version": "1.0.0",
   "private": true,
-  "description": "CampusBITE - Offline-first canteen ordering system (phone as server)",
+  "description": "CampusBITE - Offline-first canteen ordering on a phone hotspot (Expo app + API on the PC)",
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
-    "dev:server": "npm run dev --workspace=server-core",
-    "dev:client": "npm run dev --workspace=web-client",
-    "build": "npm run build --workspaces --if-present",
-    "build:server": "npm run build --workspace=server-core",
-    "build:client": "npm run build --workspace=web-client",
-    "start": "npm run start --workspace=server-core"
+    "start": "npm run start --workspace=mobile-server",
+    "demo": "npm run demo --workspace=mobile-server",
+    "seed": "npm run seed --workspace=mobile-server",
+    "reset-admin": "npm run reset-admin --workspace=mobile-server --",
+    "test": "npm run test --workspace=mobile-server"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.5.0"
   },
   "allowScripts": {
     "better-sqlite3": true,
@@ -27,5 +26,10 @@
     "expo-status-bar": true,
     "qrcode": true,
     "query-string": true
+  },
+  "dependencies": {
+    "expo-clipboard": "^57.0.2",
+    "pretty-format": "^29.7.0",
+    "query-string": "^9.5.1"
   }
 }
