@@ -29,7 +29,7 @@ packages/mobile-server
 | Command | What it does |
 |---|---|
 | `npm install` | Install dependencies (once, with internet) |
-| `npm run demo` | Start the Expo server for the hotspot (`expo start --lan --offline`) |
+| `npm run demo` | Start the Expo server for the hotspot (`expo start --offline`) |
 | `npm run seed` | Create or refresh demo data (keeps changed passwords) |
 | `npm run reset-admin` | Print a one-time password for `admin` (or `npm run reset-admin -- <username>`) |
 | `npm test` | Run the API test suite |
