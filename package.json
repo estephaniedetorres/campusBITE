@@ -9,6 +9,7 @@
   "scripts": {
     "start": "npm run start --workspace=mobile-server",
     "demo": "npm run demo --workspace=mobile-server",
+    "serve": "npm run serve --workspace=mobile-server",
     "seed": "npm run seed --workspace=mobile-server",
     "reset-admin": "npm run reset-admin --workspace=mobile-server --",
     "test": "npm run test --workspace=mobile-server"

@@ -77,6 +77,20 @@ addColumn('stalls', 'rating_count', 'INTEGER DEFAULT 128');
 addColumn('order_items', 'variant_id', 'TEXT');
 addColumn('order_items', 'variant_name', 'TEXT');
 addColumn('users', 'password_hash', 'TEXT');
+
+// Ingredients belong to a stall. On first upgrade, give each ingredient to the one stall whose
+// recipes use it; ingredients used by several stalls (or none) stay shared (NULL, admin only).
+{
+  const cols: any[] = rawDb.prepare(`PRAGMA table_info(ingredients)`).all();
+  if (!cols.some((c) => c.name === 'stall_id')) {
+    rawDb.exec(`ALTER TABLE ingredients ADD COLUMN stall_id TEXT REFERENCES stalls(id) ON DELETE SET NULL`);
+    rawDb.exec(`UPDATE ingredients SET stall_id = (
+        SELECT MIN(mi.stall_id) FROM recipe_bom rb JOIN menu_items mi ON mi.id = rb.menu_item_id
+        WHERE rb.ingredient_id = ingredients.id HAVING COUNT(DISTINCT mi.stall_id) = 1)`);
+    log('[DB] Assigned ingredients to stalls from recipe usage');
+  }
+}
+rawDb.exec(`CREATE INDEX IF NOT EXISTS idx_ingredients_stall ON ingredients(stall_id)`);
 addColumn('users', 'must_change_password', 'INTEGER NOT NULL DEFAULT 0');
 
 // Plain-text PINs → scrypt hashes (one-time, then the legacy column is emptied)

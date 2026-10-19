@@ -3,8 +3,9 @@ node_modules
 .expo
 .expo-shared
 packages/mobile-server/.expo
+packages/mobile-server/dist/
 /tsconfig.json
-# Leftover database from the removed server-core app — delete the folder once nothing holds it open
-packages/server-core/
-# Local browser checks (headless Edge) — not part of the app
+# Local tooling, not part of the app
 .e2e/
+.kiro/
+skills-lock.json

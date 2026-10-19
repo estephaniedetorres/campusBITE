@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS item_variants (
 -- 4. INGREDIENTS (Inventory)
 CREATE TABLE IF NOT EXISTS ingredients (
     id TEXT PRIMARY KEY,
+    stall_id TEXT REFERENCES stalls(id) ON DELETE SET NULL, -- owning stall; NULL = shared (admin only)
     name TEXT NOT NULL UNIQUE,
     unit TEXT NOT NULL CHECK(unit IN ('g','kg','ml','L','pcs')),
     current_stock REAL NOT NULL DEFAULT 0,

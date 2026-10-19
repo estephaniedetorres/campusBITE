@@ -51,6 +51,25 @@ function canManageStall(user: SessionUser | null, stallId: string | null | undef
   if (!user || !stallId) return false;
   return user.role === 'ADMIN' || (user.role === 'STALL_OWNER' && user.stall_id === stallId);
 }
+/**
+ * SQL filter for stall-owned data (ingredients, logs, audits, orders).
+ * Stall owners always see only their stall. Admins see everything, or one stall with ?stallId=
+ * (?stallId=shared → ingredients not owned by any stall).
+ */
+function stallScope(user: SessionUser | null, url: URL | null, column: string): { sql: string; p: any[] } {
+  if (user?.role === 'STALL_OWNER') return { sql: ` AND ${column} = ?`, p: [user.stall_id] };
+  const s = url?.searchParams.get('stallId');
+  if (s === 'shared') return { sql: ` AND ${column} IS NULL`, p: [] };
+  if (s) return { sql: ` AND ${column} = ?`, p: [s] };
+  return { sql: '', p: [] };
+}
+/** Ingredient visible to this user (404 for other stalls' ingredients, so ids don't leak). */
+function ingredientFor(user: SessionUser | null, id: unknown): any | null {
+  const ing = db.prepare(`SELECT * FROM ingredients WHERE id=?`).get(id) as any;
+  if (!ing) return null;
+  if (user?.role === 'ADMIN') return ing;
+  return ing.stall_id && ing.stall_id === user?.stall_id ? ing : null;
+}
 const num = (v: unknown) => (typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN);
 const isPosInt = (v: unknown, max = 1e6) => Number.isInteger(v) && (v as number) > 0 && (v as number) <= max;
 const str = (v: unknown, max = 500) => (typeof v === 'string' && v.trim() !== '' && v.length <= max ? v.trim() : null);
@@ -440,7 +459,9 @@ export const routes: Route[] = [
       const item = db.prepare(`SELECT stall_id FROM menu_items WHERE id=?`).get(body.menuItemId) as any;
       if (!item) return notFound('Menu item not found');
       if (!canManageStall(user, item.stall_id)) return forbidden('Forbidden for this stall');
-      if (!db.prepare(`SELECT id FROM ingredients WHERE id=?`).get(body.ingredientId)) return notFound('Ingredient not found');
+      const ing = ingredientFor(user, body.ingredientId);
+      if (!ing) return notFound('Ingredient not found');
+      if (ing.stall_id && ing.stall_id !== item.stall_id) return bad("That ingredient belongs to another stall's inventory");
       const id = randomUUID();
       try { db.prepare(`INSERT INTO recipe_bom (id, menu_item_id, ingredient_id, quantity_required) VALUES (?,?,?,?)`).run(id, body.menuItemId, body.ingredientId, qty); }
       catch { return json({ error: 'This ingredient is already in the recipe' }, 409); }
@@ -458,42 +479,58 @@ export const routes: Route[] = [
     },
   },
 
-  // ----- inventory (admin) -----
-  { method: 'GET', path: '/api/ingredients', auth: 'admin', handler: () => json(db.prepare(`SELECT * FROM ingredients ORDER BY name`).all()) },
+  // ----- inventory (stall owners: own stall only; admins: all, or ?stallId=) -----
   {
-    method: 'GET', path: '/api/inventory', auth: 'admin',
-    handler: () => json(db.prepare(`SELECT *, CASE WHEN current_stock <= min_threshold THEN 1 ELSE 0 END AS is_low FROM ingredients ORDER BY is_low DESC, name`).all()),
+    method: 'GET', path: '/api/ingredients', auth: 'staff',
+    handler: ({ url, user }) => {
+      const s = stallScope(user, url, 'stall_id');
+      return json(db.prepare(`SELECT * FROM ingredients WHERE 1=1${s.sql} ORDER BY name`).all(...s.p));
+    },
   },
   {
-    method: 'GET', path: '/api/inventory/:id', auth: 'admin',
-    handler: ({ params }) => { const r = db.prepare(`SELECT * FROM ingredients WHERE id=?`).get(params.id); return r ? json(r) : notFound('Ingredient not found'); },
+    method: 'GET', path: '/api/inventory', auth: 'staff',
+    handler: ({ url, user }) => {
+      const s = stallScope(user, url, 'i.stall_id');
+      return json(db.prepare(`SELECT i.*, st.name AS stall_name, CASE WHEN i.current_stock <= i.min_threshold THEN 1 ELSE 0 END AS is_low
+        FROM ingredients i LEFT JOIN stalls st ON st.id = i.stall_id WHERE 1=1${s.sql} ORDER BY is_low DESC, i.name`).all(...s.p));
+    },
   },
   {
-    method: 'GET', path: '/api/inventory/:id/logs', auth: 'admin',
-    handler: ({ params, url }) => json(db.prepare(`SELECT * FROM stock_logs WHERE ingredient_id=? ORDER BY created_at DESC LIMIT ?`)
-      .all(params.id, Math.min(Math.max(Number(url.searchParams.get('limit')) || 50, 1), 200))),
+    method: 'GET', path: '/api/inventory/:id', auth: 'staff',
+    handler: ({ params, user }) => { const r = ingredientFor(user, params.id); return r ? json(r) : notFound('Ingredient not found'); },
   },
   {
-    method: 'POST', path: '/api/inventory', auth: 'admin',
-    handler: ({ body }) => {
+    method: 'GET', path: '/api/inventory/:id/logs', auth: 'staff',
+    handler: ({ params, url, user }) => {
+      if (!ingredientFor(user, params.id)) return notFound('Ingredient not found');
+      return json(db.prepare(`SELECT * FROM stock_logs WHERE ingredient_id=? ORDER BY created_at DESC LIMIT ?`)
+        .all(params.id, Math.min(Math.max(Number(url.searchParams.get('limit')) || 50, 1), 200)));
+    },
+  },
+  {
+    method: 'POST', path: '/api/inventory', auth: 'staff',
+    handler: ({ body, user }) => {
       const name = str(body?.name, 100);
       const unit = body?.unit || 'pcs';
       if (!name) return bad('name required');
       if (!['g', 'kg', 'ml', 'L', 'pcs'].includes(unit)) return bad('unit must be g, kg, ml, L or pcs');
+      // Stall owners always add to their own stall; admins choose (or leave shared)
+      const stallId = user!.role === 'STALL_OWNER' ? user!.stall_id : (body?.stallId || null);
+      if (stallId && !db.prepare(`SELECT id FROM stalls WHERE id=?`).get(stallId)) return bad('Unknown stall');
       const id = `ing-${randomUUID().slice(0, 8)}`;
       try {
-        db.prepare(`INSERT INTO ingredients (id, name, unit, current_stock, min_threshold, cost_per_unit) VALUES (?,?,?,?,?,?)`)
-          .run(id, name, unit, num(body?.current_stock) || 0, num(body?.min_threshold) || 10, num(body?.cost_per_unit) || 0);
-      } catch { return json({ error: 'Ingredient already exists' }, 409); }
+        db.prepare(`INSERT INTO ingredients (id, stall_id, name, unit, current_stock, min_threshold, cost_per_unit) VALUES (?,?,?,?,?,?,?)`)
+          .run(id, stallId, name, unit, num(body?.current_stock) || 0, num(body?.min_threshold) || 10, num(body?.cost_per_unit) || 0);
+      } catch { return json({ error: 'An ingredient with that name already exists' }, 409); }
       return json(db.prepare(`SELECT * FROM ingredients WHERE id=?`).get(id), 201);
     },
   },
   ...(['stock-in', 'stock-out'] as const).map((kind): Route => ({
-    method: 'POST', path: `/api/inventory/:id/${kind}`, auth: 'admin',
-    handler: ({ params, body }) => {
+    method: 'POST', path: `/api/inventory/:id/${kind}`, auth: 'staff',
+    handler: ({ params, body, user }) => {
       const qty = num(body?.quantity);
       if (!(qty > 0)) return bad('quantity must be positive');
-      const ing = db.prepare(`SELECT * FROM ingredients WHERE id=?`).get(params.id) as any;
+      const ing = ingredientFor(user, params.id);
       if (!ing) return notFound('Ingredient not found');
       if (kind === 'stock-out' && ing.current_stock < qty) return json({ error: `Insufficient stock: have ${ing.current_stock}, need ${qty}` }, 409);
       const delta = kind === 'stock-in' ? qty : -qty;
@@ -506,42 +543,50 @@ export const routes: Route[] = [
     },
   })),
   {
-    method: 'PATCH', path: '/api/inventory/:id', auth: 'admin',
-    handler: ({ params, body }) => {
-      if (!db.prepare(`SELECT id FROM ingredients WHERE id=?`).get(params.id)) return notFound();
+    method: 'PATCH', path: '/api/inventory/:id', auth: 'staff',
+    handler: ({ params, body, user }) => {
+      if (!ingredientFor(user, params.id)) return notFound('Ingredient not found');
       const fields: string[] = []; const vals: any[] = [];
       for (const k of ['name', 'unit', 'min_threshold', 'cost_per_unit']) if (body?.[k] !== undefined) { fields.push(`${k}=?`); vals.push(body[k]); }
+      // Only admins can move an ingredient between stalls
+      if (body?.stallId !== undefined && user!.role === 'ADMIN') {
+        if (body.stallId && !db.prepare(`SELECT id FROM stalls WHERE id=?`).get(body.stallId)) return bad('Unknown stall');
+        fields.push('stall_id=?'); vals.push(body.stallId || null);
+      }
       if (fields.length) { fields.push('updated_at=CURRENT_TIMESTAMP'); vals.push(params.id); db.prepare(`UPDATE ingredients SET ${fields.join(',')} WHERE id=?`).run(...vals); }
       return json(db.prepare(`SELECT * FROM ingredients WHERE id=?`).get(params.id));
     },
   },
   {
-    method: 'GET', path: '/api/stock-logs', auth: 'admin',
-    handler: ({ url }) => {
+    method: 'GET', path: '/api/stock-logs', auth: 'staff',
+    handler: ({ url, user }) => {
       const limit = Math.min(Math.max(Number(url.searchParams.get('limit')) || 100, 1), 500);
       const type = url.searchParams.get('type');
-      return json(type
-        ? db.prepare(`SELECT sl.*, i.name AS ingredient_name FROM stock_logs sl JOIN ingredients i ON i.id=sl.ingredient_id WHERE sl.change_type=? ORDER BY sl.created_at DESC LIMIT ?`).all(type, limit)
-        : db.prepare(`SELECT sl.*, i.name AS ingredient_name FROM stock_logs sl JOIN ingredients i ON i.id=sl.ingredient_id ORDER BY sl.created_at DESC LIMIT ?`).all(limit));
+      const s = stallScope(user, url, 'i.stall_id');
+      const t = type ? ` AND sl.change_type=?` : '';
+      return json(db.prepare(`SELECT sl.*, i.name AS ingredient_name, i.stall_id FROM stock_logs sl JOIN ingredients i ON i.id=sl.ingredient_id
+        WHERE 1=1${t}${s.sql} ORDER BY sl.created_at DESC LIMIT ?`).all(...(type ? [type] : []), ...s.p, limit));
     },
   },
 
-  // ----- audits (admin) -----
+  // ----- audits (stall owners: own stall's ingredients) -----
   {
-    method: 'GET', path: '/api/audits', auth: 'admin',
-    handler: ({ url }) => {
+    method: 'GET', path: '/api/audits', auth: 'staff',
+    handler: ({ url, user }) => {
       const date = url.searchParams.get('date');
-      const base = `SELECT da.*, i.name AS ingredient_name, i.unit FROM daily_audits da JOIN ingredients i ON i.id=da.ingredient_id`;
-      return json(date ? db.prepare(`${base} WHERE da.audit_date=? ORDER BY i.name`).all(date) : db.prepare(`${base} ORDER BY da.audit_date DESC, i.name`).all());
+      const s = stallScope(user, url, 'i.stall_id');
+      const d = date ? ` AND da.audit_date=?` : '';
+      return json(db.prepare(`SELECT da.*, i.name AS ingredient_name, i.unit, i.stall_id FROM daily_audits da JOIN ingredients i ON i.id=da.ingredient_id
+        WHERE 1=1${d}${s.sql} ORDER BY da.audit_date DESC, i.name`).all(...(date ? [date] : []), ...s.p));
     },
   },
   {
-    method: 'POST', path: '/api/audits', auth: 'admin',
-    handler: ({ body }) => auditEntries(body?.auditDate, [{ ingredientId: body?.ingredientId, physicalActualStock: body?.physicalActualStock, notes: body?.notes }], false),
+    method: 'POST', path: '/api/audits', auth: 'staff',
+    handler: ({ body, user }) => auditEntries(user, body?.auditDate, [{ ingredientId: body?.ingredientId, physicalActualStock: body?.physicalActualStock, notes: body?.notes }], false),
   },
   {
-    method: 'POST', path: '/api/audits/bulk', auth: 'admin',
-    handler: ({ body }) => auditEntries(body?.auditDate, Array.isArray(body?.entries) ? body.entries : [], true),
+    method: 'POST', path: '/api/audits/bulk', auth: 'staff',
+    handler: ({ body, user }) => auditEntries(user, body?.auditDate, Array.isArray(body?.entries) ? body.entries : [], true),
   },
 
   // ----- reports / analytics -----
@@ -563,16 +608,19 @@ export const routes: Route[] = [
     },
   },
   {
-    method: 'GET', path: '/api/reports/summary', auth: 'admin',
-    handler: ({ url }) => {
+    method: 'GET', path: '/api/reports/summary', auth: 'staff',
+    handler: ({ url, user }) => {
       const from = url.searchParams.get('from') || new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
       const to = url.searchParams.get('to') || new Date().toISOString().slice(0, 10);
+      const o = stallScope(user, url, 'stall_id');
+      const i = stallScope(user, url, 'stall_id');
       return json({
         from, to,
-        daily: db.prepare(`SELECT date(created_at) AS day, COUNT(*) AS orders, SUM(total_amount) AS revenue FROM orders WHERE date(created_at) BETWEEN date(?) AND date(?) AND status!='CANCELLED' GROUP BY day ORDER BY day`).all(from, to),
-        monthly: db.prepare(`SELECT strftime('%Y-%m', created_at) AS month, COUNT(*) AS orders, SUM(total_amount) AS revenue FROM orders WHERE date(created_at) BETWEEN date(?) AND date(?) AND status!='CANCELLED' GROUP BY month ORDER BY month`).all(from, to),
-        lowStocks: db.prepare(`SELECT * FROM ingredients WHERE current_stock <= min_threshold ORDER BY current_stock`).all(),
-        totalIngredientsValue: db.prepare(`SELECT SUM(current_stock * cost_per_unit) AS value FROM ingredients`).get(),
+        stall: user!.role === 'STALL_OWNER' ? user!.stall_id : url.searchParams.get('stallId') || 'all',
+        daily: db.prepare(`SELECT date(created_at) AS day, COUNT(*) AS orders, SUM(total_amount) AS revenue FROM orders WHERE date(created_at) BETWEEN date(?) AND date(?) AND status!='CANCELLED'${o.sql} GROUP BY day ORDER BY day`).all(from, to, ...o.p),
+        monthly: db.prepare(`SELECT strftime('%Y-%m', created_at) AS month, COUNT(*) AS orders, SUM(total_amount) AS revenue FROM orders WHERE date(created_at) BETWEEN date(?) AND date(?) AND status!='CANCELLED'${o.sql} GROUP BY month ORDER BY month`).all(from, to, ...o.p),
+        lowStocks: db.prepare(`SELECT * FROM ingredients WHERE current_stock <= min_threshold${i.sql} ORDER BY current_stock`).all(...i.p),
+        totalIngredientsValue: db.prepare(`SELECT COALESCE(SUM(current_stock * cost_per_unit), 0) AS value FROM ingredients WHERE 1=1${i.sql}`).get(...i.p),
       });
     },
   },
@@ -684,7 +732,7 @@ export const routes: Route[] = [
   },
 ];
 
-function auditEntries(auditDate: unknown, entries: any[], bulk: boolean) {
+function auditEntries(user: SessionUser | null, auditDate: unknown, entries: any[], bulk: boolean) {
   if (typeof auditDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(auditDate)) return bad('auditDate (YYYY-MM-DD) required');
   if (!entries.length) return bad('entries required');
   const results: any[] = [];
@@ -693,7 +741,7 @@ function auditEntries(auditDate: unknown, entries: any[], bulk: boolean) {
       for (const e of entries) {
         const actual = num(e?.physicalActualStock);
         if (!(actual >= 0)) throw new Error('physicalActualStock must be 0 or more');
-        const ing = db.prepare(`SELECT current_stock FROM ingredients WHERE id=?`).get(e?.ingredientId) as any;
+        const ing = ingredientFor(user, e?.ingredientId);
         if (!ing) throw new Error(`Ingredient ${e?.ingredientId} not found`);
         const variance = actual - ing.current_stock;
         const id = randomUUID();

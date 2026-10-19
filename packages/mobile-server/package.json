@@ -7,8 +7,10 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web",
+    "web": "expo start --web --offline",
     "demo": "expo start --offline",
+    "build:web": "expo export -p web",
+    "serve": "expo export -p web && expo serve --port 8081",
     "seed": "tsx scripts/seed.ts",
     "reset-admin": "tsx scripts/reset-admin.ts",
     "test": "vitest run"

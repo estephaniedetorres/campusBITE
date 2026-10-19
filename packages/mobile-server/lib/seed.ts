@@ -20,9 +20,11 @@ export function seedDatabase(db: any, log: (msg: string) => void = () => {}) {
       db.prepare(`INSERT INTO categories (id, stall_id, name, display_order) VALUES (?,?,?,?)
         ON CONFLICT(id) DO UPDATE SET name=excluded.name, display_order=excluded.display_order, stall_id=excluded.stall_id`)
         .run(id, stallId, name, order);
-    const ingredient = (id: string, name: string, unit: string, stock: number, min: number, cost: number) =>
-      db.prepare(`INSERT OR IGNORE INTO ingredients (id, name, unit, current_stock, min_threshold, cost_per_unit) VALUES (?,?,?,?,?,?)`)
-        .run(id, name, unit, stock, min, cost);
+    const ingredient = (id: string, name: string, unit: string, stock: number, min: number, cost: number) => {
+      const stallId = /potato|oil|cheese-powder|sourcream|chili/.test(id) ? 'stall-001' : 'stall-002';
+      db.prepare(`INSERT OR IGNORE INTO ingredients (id, stall_id, name, unit, current_stock, min_threshold, cost_per_unit) VALUES (?,?,?,?,?,?,?)`)
+        .run(id, stallId, name, unit, stock, min, cost);
+    };
     const item = (id: string, stallId: string, catId: string, name: string, price: number, desc: string, img: string, rating: number, count: number) =>
       db.prepare(`INSERT INTO menu_items (id, stall_id, category_id, name, price, description, image_url, rating, rating_count) VALUES (?,?,?,?,?,?,?,?,?)
         ON CONFLICT(id) DO UPDATE SET name=excluded.name, price=excluded.price, description=excluded.description, image_url=excluded.image_url,

@@ -160,10 +160,11 @@ export default function AdminPage() {
   const isAdmin = user?.role === 'ADMIN';
   const tabs: { k: Tab; l: string; adminOnly?: boolean }[] = [
     { k: 'menu', l: 'Menu' },
-    { k: 'inventory', l: 'Ingredients', adminOnly: true },
-    { k: 'bom', l: 'Recipe BOM', adminOnly: true },
-    { k: 'audits', l: 'EOD Audits', adminOnly: true },
-    { k: 'analytics', l: 'Analytics', adminOnly: true },
+    // Stall owners get these too, limited to their own stall by the API
+    { k: 'inventory', l: 'Ingredients' },
+    { k: 'bom', l: 'Recipe BOM' },
+    { k: 'audits', l: 'EOD Audits' },
+    { k: 'analytics', l: 'Analytics' },
     { k: 'users', l: 'Users', adminOnly: true },
   ];
   const visibleTabs = tabs.filter((t) => !t.adminOnly || isAdmin);
@@ -176,9 +177,9 @@ export default function AdminPage() {
     users: Users,
   };
 
-  // Keep STALL_OWNER on menu if they switch away then auth changes — must be before early returns (hooks order)
+  // Users is the only admin-only tab — must be before early returns (hooks order)
   useEffect(() => {
-    if (!isAdmin && tab !== 'menu') setTab('menu');
+    if (!isAdmin && tab === 'users') setTab('menu');
   }, [isAdmin, tab]);
 
   if (loading) {
@@ -198,7 +199,7 @@ export default function AdminPage() {
     <StaffScreen
       hero={
         <StaffHero image={STAFF_HERO_IMAGES.admin} eyebrow={isAdmin ? 'Admin · All stalls' : `Admin · ${user.stall_name ?? '—'}`}
-          title={tabTitle} subtitle={isAdmin ? 'Manage stalls, menus, stock and staff.' : 'Manage your menu, prices and stall QR.'} user={user} compact />
+          title={tabTitle} subtitle={TAB_SUBTITLES[tab](isAdmin)} user={user} compact />
       }
     >
       {/* Tabs — cream segmented pill, same as the floating nav */}
@@ -220,10 +221,10 @@ export default function AdminPage() {
       ) : null}
 
       {tab === 'menu' && <MenuManagementTab token={token} user={user} />}
-      {tab === 'inventory' && (isAdmin ? <InventoryTab token={token} /> : <AdminOnly />)}
-      {tab === 'bom' && (isAdmin ? <BomTab token={token} /> : <AdminOnly />)}
-      {tab === 'audits' && (isAdmin ? <AuditTab token={token} /> : <AdminOnly />)}
-      {tab === 'analytics' && (isAdmin ? <AnalyticsTab token={token} /> : <AdminOnly />)}
+      {tab === 'inventory' && <InventoryTab token={token} user={user} />}
+      {tab === 'bom' && <BomTab token={token} user={user} />}
+      {tab === 'audits' && <AuditTab token={token} />}
+      {tab === 'analytics' && <AnalyticsTab token={token} user={user} />}
       {tab === 'users' && (isAdmin ? <UsersTab token={token} /> : <AdminOnly />)}
     </StaffScreen>
   );
@@ -807,13 +808,46 @@ function MenuManagementTab({ token, user }: { token: string | null; user: AuthUs
 // ===========================================================================
 // INVENTORY TAB
 // ===========================================================================
-function InventoryTab({ token }: { token: string | null }) {
+const UNITS = ['g', 'kg', 'ml', 'L', 'pcs'] as const;
+
+const TAB_SUBTITLES: Record<Tab, (isAdmin: boolean) => string> = {
+  menu: (a) => (a ? 'Manage stalls, menus, prices and QR codes.' : 'Manage your menu, prices and stall QR.'),
+  inventory: (a) => (a ? 'Stock levels for every stall.' : 'Your stall’s stock: restock, wastage, low alerts.'),
+  bom: (a) => (a ? 'Ingredients used per serving, all stalls.' : 'Ingredients each of your items uses per serving.'),
+  audits: (a) => (a ? 'End-of-day counts for every stall.' : 'Count your stock at closing; differences are logged.'),
+  analytics: (a) => (a ? 'Sales and stock across all stalls.' : 'Your stall’s sales, top items and low stock.'),
+  users: () => 'Staff accounts and password resets.',
+};
+
+function InventoryTab({ token, user }: { token: string | null; user: AuthUser }) {
+  const isAdmin = user.role === 'ADMIN';
   const [ings, setIngs] = useState<any[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
+  const [stalls, setStalls] = useState<any[]>([]);
   const [showIn, setShowIn] = useState<string | null>(null);
   const [qty, setQty] = useState('');
   const [showOut, setShowOut] = useState<string | null>(null);
   const [qtyOut, setQtyOut] = useState('');
+  const [form, setForm] = useState({ name: '', unit: 'g', stock: '', min: '', cost: '', stallId: '' });
+
+  useEffect(() => {
+    if (isAdmin) authedGet('/api/stalls', token).then((s) => setStalls(Array.isArray(s) ? s : [])).catch(() => {});
+  }, [isAdmin, token]);
+
+  async function addIngredient() {
+    if (!form.name.trim()) { Alert.alert('Missing', 'Enter an ingredient name'); return; }
+    try {
+      await authedPost('/api/inventory', {
+        name: form.name.trim(), unit: form.unit,
+        current_stock: Number(form.stock) || 0, min_threshold: Number(form.min) || 10, cost_per_unit: Number(form.cost) || 0,
+        stallId: isAdmin ? form.stallId || null : undefined,
+      }, token);
+      setForm({ name: '', unit: 'g', stock: '', min: '', cost: '', stallId: form.stallId });
+      load();
+    } catch (e: any) {
+      Alert.alert('Failed', e?.message ?? String(e));
+    }
+  }
 
   const load = useCallback(async () => {
     try {
@@ -835,7 +869,7 @@ function InventoryTab({ token }: { token: string | null }) {
       return;
     }
     try {
-      await authedPost(`/api/inventory/${id}/stock-in`, { quantity: n, reason: 'Admin stock-in' }, token);
+      await authedPost(`/api/inventory/${id}/stock-in`, { quantity: n, reason: `Stock-in by ${user.username}` }, token);
       setShowIn(null);
       setQty('');
       load();
@@ -859,8 +893,48 @@ function InventoryTab({ token }: { token: string | null }) {
     }
   }
 
+  const lowCount = ings.filter((i) => i.is_low).length;
+
   return (
     <View style={styles.tabContent}>
+      <Text style={styles.tdDesc}>
+        {isAdmin ? `All stalls · ${ings.length} ingredients` : `${user.stall_name ?? 'Your stall'} · ${ings.length} ingredients`}
+        {lowCount ? ` · ${lowCount} low on stock` : ''}
+      </Text>
+
+      <View style={styles.forkCard}>
+        <Text style={styles.sectionTitle}>Add ingredient</Text>
+        <View style={styles.stack}>
+          <TextInput value={form.name} onChangeText={(t) => setForm({ ...form, name: t })} placeholder="Name (e.g. Garlic Powder)" placeholderTextColor="#A8A29E" style={styles.input} accessibilityLabel="Ingredient name" />
+          <View style={styles.roleChips}>
+            {UNITS.map((u) => (
+              <TouchableOpacity key={u} onPress={() => setForm({ ...form, unit: u })} style={[styles.roleChip, form.unit === u ? styles.roleChipActive : null]} activeOpacity={0.85}>
+                <Text style={[styles.roleChipText, form.unit === u ? styles.roleChipTextActive : null]}>{u}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <View style={styles.rowInputs}>
+            <TextInput value={form.stock} onChangeText={(t) => setForm({ ...form, stock: t })} placeholder="Starting stock" placeholderTextColor="#A8A29E" keyboardType="numeric" style={[styles.input, { flex: 1 }]} />
+            <TextInput value={form.min} onChangeText={(t) => setForm({ ...form, min: t })} placeholder="Low alert at" placeholderTextColor="#A8A29E" keyboardType="numeric" style={[styles.input, { flex: 1 }]} />
+            <TextInput value={form.cost} onChangeText={(t) => setForm({ ...form, cost: t })} placeholder="₱ / unit" placeholderTextColor="#A8A29E" keyboardType="numeric" style={[styles.input, { flex: 1 }]} />
+          </View>
+          {isAdmin ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pickerChips}>
+              {[{ id: '', name: 'Shared' }, ...stalls].map((s: any) => (
+                <TouchableOpacity key={s.id || 'shared'} onPress={() => setForm({ ...form, stallId: s.id })}
+                  style={[styles.pickerChip, form.stallId === s.id ? styles.pickerChipActive : null]} activeOpacity={0.85}>
+                  <Text style={[styles.pickerText, form.stallId === s.id ? styles.pickerTextActive : null]}>{s.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          ) : null}
+          <TouchableOpacity onPress={addIngredient} style={[styles.btnDark, { alignSelf: 'flex-start' }]} activeOpacity={0.85}>
+            <Plus size={14} color="#fff" />
+            <Text style={styles.btnDarkText}>Add ingredient</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <View style={styles.invGrid}>
         {ings.map((ing) => (
           <View key={ing.id} style={[styles.invCard, ing.is_low ? styles.invCardLow : null]}>
@@ -868,7 +942,7 @@ function InventoryTab({ token }: { token: string | null }) {
               <View style={styles.invMeta}>
                 <Text style={styles.invName}>{ing.name}</Text>
                 <Text style={styles.invSub}>
-                  {ing.id} · {ing.unit} · ₱{ing.cost_per_unit}/unit
+                  {isAdmin ? `${ing.stall_name ?? 'Shared'} · ` : ''}{ing.unit} · ₱{ing.cost_per_unit}/unit
                 </Text>
               </View>
               {ing.is_low ? (
@@ -990,24 +1064,29 @@ function InventoryTab({ token }: { token: string | null }) {
 // ===========================================================================
 // BOM TAB
 // ===========================================================================
-function BomTab({ token }: { token: string | null }) {
+function BomTab({ token, user }: { token: string | null; user: AuthUser }) {
+  const isAdmin = user.role === 'ADMIN';
   const [boms, setBoms] = useState<any[]>([]);
   const [menu, setMenu] = useState<any[]>([]);
-  const [ings, setIngs] = useState<any[]>([]);
+  const [allIngs, setIngs] = useState<any[]>([]);
   const [form, setForm] = useState({ menuItemId: '', ingredientId: '', quantityRequired: '' });
+  // Only offer ingredients from the chosen item's stall (plus shared ones)
+  const itemStall = menu.find((m: any) => m.id === form.menuItemId)?.stall_id;
+  const ings = itemStall ? allIngs.filter((i: any) => !i.stall_id || i.stall_id === itemStall) : allIngs;
 
   const load = useCallback(async () => {
     try {
+      const menuPath = isAdmin ? '/api/menu?includeUnavailable=1' : `/api/menu?includeUnavailable=1&stallId=${user.stall_id}`;
       const [a, b, c] = await Promise.all([
         authedGet('/api/recipe-bom', token),
-        authedGet('/api/menu?includeUnavailable=1', token),
+        authedGet(menuPath, token),
         authedGet('/api/ingredients', token),
       ]);
       setBoms(Array.isArray(a) ? a : []);
       setMenu(Array.isArray(b) ? b : []);
       setIngs(Array.isArray(c) ? c : []);
     } catch {}
-  }, [token]);
+  }, [token, isAdmin, user.stall_id]);
 
   useEffect(() => {
     load();
@@ -1056,12 +1135,12 @@ function BomTab({ token }: { token: string | null }) {
             {menu.map((m: any) => (
               <TouchableOpacity
                 key={m.id}
-                onPress={() => setForm({ ...form, menuItemId: m.id })}
+                onPress={() => setForm({ ...form, menuItemId: m.id, ingredientId: '' })}
                 style={[styles.pickerChip, form.menuItemId === m.id ? styles.pickerChipActive : null]}
                 activeOpacity={0.85}
               >
                 <Text style={[styles.pickerText, form.menuItemId === m.id ? styles.pickerTextActive : null]} numberOfLines={1}>
-                  {m.name} ({m.stall_id})
+                  {isAdmin ? `${m.name} (${m.stall_name ?? m.stall_id})` : m.name}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -1255,7 +1334,7 @@ function AuditTab({ token }: { token: string | null }) {
 // ===========================================================================
 // ANALYTICS TAB
 // ===========================================================================
-function AnalyticsTab({ token }: { token: string | null }) {
+function AnalyticsTab({ token, user }: { token: string | null; user: AuthUser }) {
   const [data, setData] = useState<any>(null);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [dailyData, setDailyData] = useState<any>(null);
@@ -1268,7 +1347,7 @@ function AnalyticsTab({ token }: { token: string | null }) {
       setData(null);
     }
     try {
-      const dd = await authedGet(`/api/orders/analytics/daily?date=${date}`, token);
+      const dd = await authedGet(`/api/analytics/daily?date=${date}`, token);
       setDailyData(dd);
     } catch {
       setDailyData(null);
@@ -1280,11 +1359,13 @@ function AnalyticsTab({ token }: { token: string | null }) {
   }, [load]);
 
   const summary = data?.daily?.[0] || (dailyData?.revenue as any) || { revenue: 0, orderCount: 0, orders: 0 };
-  const topItems: any[] = data?.lowStocks ? [] : dailyData?.topItems || [];
+  const topItems: any[] = dailyData?.topItems || [];
   const hourly: any[] = dailyData?.hourly || [];
+  const lowStocks: any[] = data?.lowStocks || [];
 
   return (
     <View style={styles.tabContent}>
+      <Text style={styles.tdDesc}>{user.role === 'ADMIN' ? 'All stalls' : user.stall_name ?? 'Your stall'}</Text>
       <View style={styles.rowInputs}>
         <TextInput value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" placeholderTextColor="#A8A29E" style={[styles.input, { flex: 1 }]} />
         <TouchableOpacity onPress={load} style={styles.btnGhost} activeOpacity={0.85}>
@@ -1302,6 +1383,11 @@ function AnalyticsTab({ token }: { token: string | null }) {
           <Text style={styles.statLabel}>Top Item</Text>
           <Text style={styles.statValueSmall}>{topItems?.[0]?.name || '—'}</Text>
           <Text style={styles.statSub}>{topItems?.[0]?.qty || 0} sold</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statLabel}>Low stock</Text>
+          <Text style={[styles.statValueSmall, lowStocks.length ? { color: '#B45309' } : null]}>{lowStocks.length}</Text>
+          <Text style={styles.statSub} numberOfLines={2}>{lowStocks.map((l: any) => l.name).join(', ') || 'All ingredients OK'}</Text>
         </View>
         <View style={styles.statCard}>
           <Text style={styles.statLabel}>Hourly Peak</Text>

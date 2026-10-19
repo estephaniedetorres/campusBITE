@@ -3,7 +3,7 @@
 A phone's Wi-Fi hotspot is the network; a PC on that hotspot runs one Expo server (`:8081`) that serves the app **and** its API (SQLite). No internet needed.
 
 - **Students** scan a stall's QR with the phone camera and order in the browser: `http://<PC-IP>:8081/kiosk?stall=stall-001`. Orders are tracked per device (no accounts).
-- **Staff** (POS, Kitchen, Admin) use the same app in **Expo Go** on Android phones.
+- **Staff** (POS, Kitchen, Admin) use the same app in the phone browser (or Expo Go on Android with `npm run demo`).
 
 See [DEMO.md](DEMO.md) for the demo-day runbook.
 
@@ -20,6 +20,7 @@ packages/mobile-server
 │   └── bomEngine.ts     # atomic stock deduction / rollback
 ├── assets/stock/        # bundled offline photos, served at /api/images/*
 ├── data/                # campusbite.db + uploads/ (git-ignored)
+├── dist/                # production build from `npm run serve` (git-ignored)
 ├── scripts/             # seed.ts, reset-admin.ts
 └── tests/               # Vitest API tests
 ```
@@ -29,7 +30,8 @@ packages/mobile-server
 | Command | What it does |
 |---|---|
 | `npm install` | Install dependencies (once, with internet) |
-| `npm run demo` | Start the Expo server for the hotspot (`expo start --offline`) |
+| `npm run serve` | Build once and serve the fast production app on `:8081` (use this for demos) |
+| `npm run demo` | Development server for Expo Go (`expo start --offline`); slow in browsers |
 | `npm run seed` | Create or refresh demo data (keeps changed passwords) |
 | `npm run reset-admin` | Print a one-time password for `admin` (or `npm run reset-admin -- <username>`) |
 | `npm test` | Run the API test suite |
